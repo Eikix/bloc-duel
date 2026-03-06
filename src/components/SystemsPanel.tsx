@@ -1,50 +1,48 @@
-import { SystemSymbol } from '../game/systems'
-import type { Faction } from '../store/gameStore'
+import { SYSTEM_BONUS_LABELS } from '../game/systems'
+import type { SystemSymbol } from '../game/systems'
 
 interface SystemsPanelProps {
   systems: SystemSymbol[]
-  faction: Faction
+  activeSystemBonuses: SystemSymbol[]
 }
 
-const ALL_SYMBOLS: SystemSymbol[] = [
-  SystemSymbol.COMPUTE,
-  SystemSymbol.FINANCE,
-  SystemSymbol.CYBER,
-  SystemSymbol.DIPLOMACY,
-  SystemSymbol.RESOURCES,
-  SystemSymbol.INDUSTRY,
-]
-
-const SYMBOL_COLORS: Record<SystemSymbol, { active: string; icon: string }> = {
-  COMPUTE: { active: 'bg-blue-100 text-blue-700 border-blue-200', icon: 'C' },
-  FINANCE: { active: 'bg-amber-100 text-amber-700 border-amber-200', icon: 'F' },
-  CYBER: { active: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: 'Y' },
-  DIPLOMACY: { active: 'bg-violet-100 text-violet-700 border-violet-200', icon: 'D' },
-  RESOURCES: { active: 'bg-orange-100 text-orange-700 border-orange-200', icon: 'R' },
-  INDUSTRY: { active: 'bg-slate-100 text-slate-700 border-slate-200', icon: 'I' },
+const SYMBOL_INFO: Record<SystemSymbol, { color: string; label: string }> = {
+  COMPUTE: { color: 'bg-blue-500', label: 'COM' },
+  FINANCE: { color: 'bg-amber-500', label: 'FIN' },
+  CYBER: { color: 'bg-emerald-500', label: 'CYB' },
+  DIPLOMACY: { color: 'bg-violet-500', label: 'DIP' },
 }
 
-export default function SystemsPanel({ systems }: SystemsPanelProps) {
+export default function SystemsPanel({ systems, activeSystemBonuses }: SystemsPanelProps) {
+  // Group by symbol and count
+  const counts = new Map<SystemSymbol, number>()
+  for (const s of systems) {
+    counts.set(s, (counts.get(s) ?? 0) + 1)
+  }
+
+  if (counts.size === 0) {
+    return <span className="font-mono text-[9px] text-ink-faint italic">no systems</span>
+  }
+
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {ALL_SYMBOLS.map((sym) => {
-        const count = systems.filter((s) => s === sym).length
-        const owned = count > 0
-        const colors = SYMBOL_COLORS[sym]
-
+    <div className="flex flex-wrap items-center gap-1">
+      {[...counts.entries()].map(([sym, count]) => {
+        const info = SYMBOL_INFO[sym]
+        const isActive = activeSystemBonuses.includes(sym)
         return (
           <div
             key={sym}
-            className={`
-              rounded-lg border px-2 py-1 font-mono text-[10px] font-medium transition-all
-              ${owned
-                ? `${colors.active} shadow-sm`
-                : 'border-border bg-surface text-ink-faint'
-              }
-            `}
+            className="flex items-center gap-0.5"
+            title={`${sym}: ${count} card${count > 1 ? 's' : ''}${isActive ? ' \u2014 BONUS: ' + SYSTEM_BONUS_LABELS[sym] : ''}`}
           >
-            {sym.slice(0, 3)}
-            {count > 1 && <span className="ml-0.5 font-bold">x{count}</span>}
+            <span className={`${info.color} rounded px-1 py-0.5 font-mono text-[9px] font-bold text-white leading-none ${isActive ? 'ring-1 ring-yellow-400' : ''}`}>
+              {info.label}
+            </span>
+            {count > 1 && (
+              <span className="font-mono text-[9px] font-bold text-ink-muted">
+                x{count}
+              </span>
+            )}
           </div>
         )
       })}

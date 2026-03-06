@@ -32,11 +32,13 @@ export interface Card {
 }
 
 // ---------------------------------------------------------------------------
-// Age I — Foundations (costs 0-2, production focus, chain starters)
+// Age I — Foundations (max +1 anything, costs 0-1)
+// Free economy = +1 single resource. Paid economy = convert resource type.
+// 8 chains: 4 system, 1 AI, 2 economy, 1 military
 // ---------------------------------------------------------------------------
 
 export const AGE_1_CARDS: Card[] = [
-  // Chain starters
+  // Chain starters (8)
   {
     id: 'neural-relay',
     name: 'Neural Relay',
@@ -52,7 +54,7 @@ export const AGE_1_CARDS: Card[] = [
     type: 'SYSTEM',
     age: 1,
     cost: { energy: 1 },
-    effect: { escalation: 1 },
+    effect: {},
     symbol: 'CYBER',
     chainTo: 'cyber-division',
   },
@@ -62,26 +64,26 @@ export const AGE_1_CARDS: Card[] = [
     type: 'ECONOMY',
     age: 1,
     cost: {},
-    effect: { energyPerTurn: 2 },
+    effect: { energyPerTurn: 1 },
     chainTo: 'fusion-plant',
   },
   {
-    id: 'trade-relay',
-    name: 'Trade Relay',
-    type: 'ECONOMY',
+    id: 'trade-post',
+    name: 'Trade Post',
+    type: 'SYSTEM',
     age: 1,
     cost: { materials: 1 },
-    effect: { capitalPerTurn: 1 },
+    effect: {},
     symbol: 'FINANCE',
-    chainTo: 'supply-network',
+    chainTo: 'trade-network',
   },
   {
     id: 'launch-pad',
     name: 'Launch Pad',
     type: 'SYSTEM',
     age: 1,
-    cost: { energy: 1, materials: 1 },
-    effect: { computePerTurn: 1 },
+    cost: { materials: 1 },
+    effect: {},
     symbol: 'COMPUTE',
     chainTo: 'orbital-station',
   },
@@ -91,27 +93,9 @@ export const AGE_1_CARDS: Card[] = [
     type: 'SYSTEM',
     age: 1,
     cost: {},
-    effect: { escalation: -1 },
+    effect: {},
     symbol: 'DIPLOMACY',
     chainTo: 'summit-accord',
-  },
-  // Standalone
-  {
-    id: 'mining-outpost',
-    name: 'Mining Outpost',
-    type: 'ECONOMY',
-    age: 1,
-    cost: {},
-    effect: { materialsPerTurn: 2 },
-  },
-  {
-    id: 'data-center',
-    name: 'Data Center',
-    type: 'ECONOMY',
-    age: 1,
-    cost: { compute: 1 },
-    effect: { computePerTurn: 1 },
-    symbol: 'COMPUTE',
   },
   {
     id: 'recon-drone',
@@ -120,6 +104,25 @@ export const AGE_1_CARDS: Card[] = [
     age: 1,
     cost: { energy: 1 },
     effect: { escalation: 1 },
+    chainTo: 'drone-swarm',
+  },
+  {
+    id: 'mining-outpost',
+    name: 'Mining Outpost',
+    type: 'ECONOMY',
+    age: 1,
+    cost: {},
+    effect: { materialsPerTurn: 1 },
+    chainTo: 'forge-complex',
+  },
+  // Standalone (2)
+  {
+    id: 'data-center',
+    name: 'Data Center',
+    type: 'ECONOMY',
+    age: 1,
+    cost: { energy: 1 },
+    effect: { computePerTurn: 1 },
   },
   {
     id: 'propaganda-hub',
@@ -128,16 +131,15 @@ export const AGE_1_CARDS: Card[] = [
     age: 1,
     cost: { materials: 1 },
     effect: { escalation: 1 },
-    symbol: 'INDUSTRY',
   },
 ]
 
 // ---------------------------------------------------------------------------
-// Age II — Competition (costs 2-4, chain mid-points, military pressure)
+// Age II — Competition (max +2, costs 1-3)
 // ---------------------------------------------------------------------------
 
 export const AGE_2_CARDS: Card[] = [
-  // Chain mid-points
+  // Chain mid-points (8)
   {
     id: 'quantum-lab',
     name: 'Quantum Lab',
@@ -151,10 +153,10 @@ export const AGE_2_CARDS: Card[] = [
   {
     id: 'cyber-division',
     name: 'Cyber Division',
-    type: 'MILITARY',
+    type: 'SYSTEM',
     age: 2,
     cost: { energy: 2, compute: 1 },
-    effect: { escalation: 2 },
+    effect: {},
     symbol: 'CYBER',
     chainTo: 'total-surveillance',
     chainFrom: 'signal-intercept',
@@ -164,21 +166,21 @@ export const AGE_2_CARDS: Card[] = [
     name: 'Fusion Plant',
     type: 'ECONOMY',
     age: 2,
-    cost: { energy: 1, materials: 2 },
-    effect: { energyPerTurn: 3 },
+    cost: { materials: 2 },
+    effect: { energyPerTurn: 2 },
     chainTo: 'dyson-collector',
     chainFrom: 'solar-array',
   },
   {
-    id: 'supply-network',
-    name: 'Supply Network',
-    type: 'ECONOMY',
+    id: 'trade-network',
+    name: 'Trade Network',
+    type: 'SYSTEM',
     age: 2,
     cost: { materials: 2 },
-    effect: { capitalPerTurn: 2 },
+    effect: {},
     symbol: 'FINANCE',
     chainTo: 'global-exchange',
-    chainFrom: 'trade-relay',
+    chainFrom: 'trade-post',
   },
   {
     id: 'orbital-station',
@@ -186,7 +188,7 @@ export const AGE_2_CARDS: Card[] = [
     type: 'SYSTEM',
     age: 2,
     cost: { energy: 2, compute: 1 },
-    effect: { agi: 1, computePerTurn: 1 },
+    effect: {},
     symbol: 'COMPUTE',
     chainTo: 'space-command',
     chainFrom: 'launch-pad',
@@ -197,12 +199,32 @@ export const AGE_2_CARDS: Card[] = [
     type: 'SYSTEM',
     age: 2,
     cost: { materials: 1 },
-    effect: { escalation: -2 },
+    effect: {},
     symbol: 'DIPLOMACY',
     chainTo: 'world-treaty',
     chainFrom: 'embassy',
   },
-  // Standalone
+  {
+    id: 'drone-swarm',
+    name: 'Drone Swarm',
+    type: 'MILITARY',
+    age: 2,
+    cost: { energy: 2, materials: 1 },
+    effect: { escalation: 2 },
+    chainTo: 'orbital-strike',
+    chainFrom: 'recon-drone',
+  },
+  {
+    id: 'forge-complex',
+    name: 'Forge Complex',
+    type: 'ECONOMY',
+    age: 2,
+    cost: { energy: 2 },
+    effect: { materialsPerTurn: 2 },
+    chainTo: 'mega-foundry',
+    chainFrom: 'mining-outpost',
+  },
+  // Standalone (2)
   {
     id: 'deep-learning',
     name: 'Deep Learning',
@@ -212,14 +234,6 @@ export const AGE_2_CARDS: Card[] = [
     effect: { agi: 2 },
   },
   {
-    id: 'drone-swarm',
-    name: 'Drone Swarm',
-    type: 'MILITARY',
-    age: 2,
-    cost: { energy: 2, materials: 1 },
-    effect: { escalation: 2 },
-  },
-  {
     id: 'biocompute-node',
     name: 'Biocompute Node',
     type: 'AI',
@@ -227,22 +241,14 @@ export const AGE_2_CARDS: Card[] = [
     cost: { compute: 2 },
     effect: { agi: 1, computePerTurn: 1 },
   },
-  {
-    id: 'arms-dealer',
-    name: 'Arms Dealer',
-    type: 'ECONOMY',
-    age: 2,
-    cost: { materials: 2 },
-    effect: { capital: 3, escalation: 1 },
-  },
 ]
 
 // ---------------------------------------------------------------------------
-// Age III — Resolution (costs 3-6, chain endpoints, decisive plays)
+// Age III — Resolution (max +3/+4, costs 2-6)
 // ---------------------------------------------------------------------------
 
 export const AGE_3_CARDS: Card[] = [
-  // Chain endpoints
+  // Chain endpoints (8)
   {
     id: 'agi-singularity',
     name: 'AGI Singularity',
@@ -255,10 +261,10 @@ export const AGE_3_CARDS: Card[] = [
   {
     id: 'total-surveillance',
     name: 'Total Surveillance',
-    type: 'MILITARY',
+    type: 'SYSTEM',
     age: 3,
     cost: { compute: 3, energy: 2 },
-    effect: { escalation: 3 },
+    effect: {},
     symbol: 'CYBER',
     chainFrom: 'cyber-division',
   },
@@ -267,18 +273,19 @@ export const AGE_3_CARDS: Card[] = [
     name: 'Dyson Collector',
     type: 'ECONOMY',
     age: 3,
-    cost: { energy: 3, materials: 3 },
-    effect: { energyPerTurn: 4, capital: 2 },
+    cost: { materials: 3, energy: 2 },
+    effect: { energyPerTurn: 3, capital: 1 },
     chainFrom: 'fusion-plant',
   },
   {
     id: 'global-exchange',
     name: 'Global Exchange',
-    type: 'ECONOMY',
+    type: 'SYSTEM',
     age: 3,
     cost: { materials: 3, compute: 1 },
-    effect: { capitalPerTurn: 4 },
-    chainFrom: 'supply-network',
+    effect: {},
+    symbol: 'FINANCE',
+    chainFrom: 'trade-network',
   },
   {
     id: 'space-command',
@@ -286,7 +293,7 @@ export const AGE_3_CARDS: Card[] = [
     type: 'SYSTEM',
     age: 3,
     cost: { energy: 3, compute: 2, materials: 1 },
-    effect: { agi: 2, escalation: 2 },
+    effect: {},
     symbol: 'COMPUTE',
     chainFrom: 'orbital-station',
   },
@@ -296,18 +303,9 @@ export const AGE_3_CARDS: Card[] = [
     type: 'SYSTEM',
     age: 3,
     cost: { materials: 2 },
-    effect: { escalation: -3 },
+    effect: {},
     symbol: 'DIPLOMACY',
     chainFrom: 'summit-accord',
-  },
-  // Standalone
-  {
-    id: 'neural-sovereign',
-    name: 'Neural Sovereign',
-    type: 'AI',
-    age: 3,
-    cost: { compute: 4 },
-    effect: { agi: 3 },
   },
   {
     id: 'orbital-strike',
@@ -316,14 +314,25 @@ export const AGE_3_CARDS: Card[] = [
     age: 3,
     cost: { energy: 4, materials: 2 },
     effect: { escalation: 4 },
+    chainFrom: 'drone-swarm',
   },
   {
-    id: 'quantum-supremacy',
-    name: 'Quantum Supremacy',
+    id: 'mega-foundry',
+    name: 'Mega Foundry',
+    type: 'ECONOMY',
+    age: 3,
+    cost: { energy: 3, compute: 1 },
+    effect: { materialsPerTurn: 3, capital: 1 },
+    chainFrom: 'forge-complex',
+  },
+  // Standalone (2)
+  {
+    id: 'neural-sovereign',
+    name: 'Neural Sovereign',
     type: 'AI',
     age: 3,
-    cost: { compute: 5 },
-    effect: { agi: 2, computePerTurn: 2 },
+    cost: { compute: 4 },
+    effect: { agi: 3 },
   },
   {
     id: 'nuclear-deterrent',

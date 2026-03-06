@@ -79,7 +79,7 @@ export default function PlayerStatsBar({ playerIndex, isBottom }: PlayerStatsBar
 
       {/* Systems chips */}
       <div className="hidden md:flex items-center shrink-0">
-        <SystemsPanel systems={player.systems} faction={player.faction} />
+        <SystemsPanel systems={player.systems} activeSystemBonuses={player.activeSystemBonuses} />
       </div>
 
       {/* Heroes count */}

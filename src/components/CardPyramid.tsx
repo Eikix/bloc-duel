@@ -11,6 +11,14 @@ const ROWS: number[][] = [
   [6, 7, 8, 9],
 ]
 
+// Row 3 (bottom, most available) gets highest z-index
+// Available cards within a row get boosted further
+const ROW_Z: Record<number, number> = { 0: 10, 1: 20, 2: 30, 3: 40 }
+
+// Overlap: each row pulls up into the one above it
+// Negative margin eats into the previous row's space
+const ROW_OVERLAP = '-mt-6 sm:-mt-7 md:-mt-9'
+
 interface CardPyramidProps {
   dropRefs?: DropRefs
   onPlay?: (pos: number) => void
@@ -27,9 +35,13 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
   if (pyramid.length === 0) return null
 
   return (
-    <div className="flex flex-col items-center gap-1 sm:gap-1.5 md:gap-2">
+    <div className="flex flex-col items-center">
       {ROWS.map((positions, rowIndex) => (
-        <div key={rowIndex} className="flex justify-center gap-1 sm:gap-1.5 md:gap-2">
+        <div
+          key={rowIndex}
+          className={`flex justify-center gap-1 sm:gap-1.5 md:gap-2 ${rowIndex > 0 ? ROW_OVERLAP : ''}`}
+          style={{ zIndex: ROW_Z[rowIndex] }}
+        >
           <AnimatePresence mode="popLayout">
             {positions.map((pos) => {
               const node = pyramid.find((n) => n.position === pos)
@@ -39,7 +51,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                 return (
                   <div
                     key={`empty-${pos}`}
-                    className="w-14 h-[4.75rem] sm:w-16 sm:h-[5.5rem] md:w-[4.75rem] md:h-[6.5rem] rounded-xl border-2 border-dashed border-border/40 opacity-30"
+                    className="w-[4.5rem] h-24 sm:w-[5rem] sm:h-[6.75rem] md:w-24 md:h-[8.5rem] rounded-lg border border-dashed border-border/30 opacity-15"
                   />
                 )
               }

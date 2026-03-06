@@ -8,7 +8,8 @@ import PlayerStatsBar from '../components/PlayerStatsBar'
 import PlayField from '../components/PlayField'
 import DiscardZone from '../components/DiscardZone'
 import HeroPicker from '../components/HeroPicker'
-import { formatCost, totalCost } from '../game/format'
+import CardZoom from '../components/CardZoom'
+import SystemBonusChoice from '../components/SystemBonusChoice'
 
 const AGE_LABELS = { 1: 'I', 2: 'II', 3: 'III' } as const
 
@@ -28,6 +29,8 @@ export function Game() {
     discardCardAt,
     initGame,
     nextAge,
+    systemBonusChoice,
+    chooseSystemBonus,
   } = useGameStore()
 
   useEffect(() => {
@@ -63,6 +66,11 @@ export function Game() {
 
   // Determine winner for game over screen
   const getVictoryInfo = () => {
+    // Systems Victory: all 4 unique system types
+    const p0unique = new Set(players[0].systems).size
+    const p1unique = new Set(players[1].systems).size
+    if (p0unique >= 4) return { winner: players[0].name, reason: 'Systems Dominance' }
+    if (p1unique >= 4) return { winner: players[1].name, reason: 'Systems Dominance' }
     if (agiTrack[0] >= 6) return { winner: players[0].name, reason: 'AGI Breakthrough' }
     if (agiTrack[1] >= 6) return { winner: players[1].name, reason: 'AGI Breakthrough' }
     if (escalationTrack >= 6) return { winner: players[0].name, reason: 'Escalation Dominance' }
@@ -94,15 +102,7 @@ export function Game() {
       </header>
 
       {/* Battlefield */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentPlayer}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="flex flex-col flex-1 px-2 md:px-3 pb-2 gap-1.5 md:gap-2 md:overflow-hidden"
-        >
+      <div className="flex flex-col flex-1 px-2 md:px-3 pb-2 gap-1.5 md:gap-2 md:overflow-hidden">
           {/* Opponent stats bar */}
           <PlayerStatsBar playerIndex={topPlayer} isBottom={false} />
 
@@ -121,61 +121,24 @@ export function Game() {
             </div>
           </div>
 
-          {/* Pyramid — takes remaining space, centered */}
-          <div className="flex-1 flex flex-col items-center justify-center min-h-0 py-1">
-            <CardPyramid
-              dropRefs={dropRefs}
-              onPlay={playCardAt}
-              onDiscard={discardCardAt}
-              onDragOverZone={setActiveDragZone}
-            />
-
-            {/* Tap-action fallback when a card is selected */}
-            <AnimatePresence>
-              {selectedNode && phase === 'DRAFTING' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  className="flex items-center gap-2 mt-2 rounded-xl border border-border bg-surface-raised px-3 py-2 shadow-lg"
-                >
-                  <span className="font-body text-xs font-semibold text-ink mr-1">
-                    {selectedNode.card.name}
-                  </span>
-                  <button
-                    onClick={playCard}
-                    disabled={!canAffordCard}
-                    className={`rounded-lg px-3 py-1.5 font-mono text-[10px] font-semibold text-white transition ${
-                      canAffordCard
-                        ? 'bg-ink hover:bg-ink/80 shadow-sm'
-                        : 'bg-ink-faint cursor-not-allowed'
-                    }`}
-                  >
-                    {isFreeViaChain
-                      ? 'Play (FREE)'
-                      : totalCost(selectedNode.card.cost) > 0
-                        ? `Play (${formatCost(selectedNode.card.cost)})`
-                        : 'Play'}
-                  </button>
-                  <button
-                    onClick={discardCard}
-                    className="rounded-lg border border-border px-3 py-1.5 font-mono text-[10px] font-medium text-ink-muted transition hover:bg-surface hover:text-ink"
-                  >
-                    Sell +{sellValue}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Discard zone */}
+          {/* Discard zone — above pyramid, far from play field to prevent misdrops */}
           <DiscardZone
             ref={discardRef}
             sellValue={sellValue}
             isHighlighted={activeDragZone === 'discard'}
           />
 
-          {/* Your play field (drop target) */}
+          {/* Pyramid — takes remaining space, centered */}
+          <div className="flex-1 flex items-center justify-center min-h-0 py-1">
+            <CardPyramid
+              dropRefs={dropRefs}
+              onPlay={playCardAt}
+              onDiscard={discardCardAt}
+              onDragOverZone={setActiveDragZone}
+            />
+          </div>
+
+          {/* Your play field (drop target) — directly below pyramid */}
           <PlayField
             ref={playFieldRef}
             playerIndex={bottomPlayer}
@@ -184,11 +147,34 @@ export function Game() {
 
           {/* Your stats bar */}
           <PlayerStatsBar playerIndex={bottomPlayer} isBottom={true} />
-        </motion.div>
+      </div>
+
+      {/* Card zoom overlay */}
+      <AnimatePresence>
+        {selectedNode && phase === 'DRAFTING' && (
+          <CardZoom
+            card={selectedNode.card}
+            affordable={canAffordCard}
+            isFreeViaChain={isFreeViaChain}
+            sellValue={sellValue}
+            onPlay={() => { playCard(); }}
+            onDiscard={() => { discardCard(); }}
+            onClose={() => useGameStore.getState().selectCard(selectedNode.position)}
+          />
+        )}
       </AnimatePresence>
 
       {/* Hero Picker */}
       <HeroPicker />
+
+      {/* System Bonus Choice */}
+      {systemBonusChoice && (
+        <SystemBonusChoice
+          playerName={players[systemBonusChoice.playerIndex].name}
+          options={systemBonusChoice.options}
+          onChoose={chooseSystemBonus}
+        />
+      )}
 
       {/* Age Transition overlay */}
       <AnimatePresence>
