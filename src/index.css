@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Anybody", sans-serif;
+  --font-body: "DM Sans", sans-serif;
+  --font-mono: "DM Mono", monospace;
+
+  --color-atlantic: #2563eb;
+  --color-atlantic-light: #dbeafe;
+  --color-continental: #7c3aed;
+  --color-continental-light: #ede9fe;
+
+  --color-surface: #f8f9fc;
+  --color-surface-raised: #ffffff;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-ink-faint: #94a3b8;
+  --color-border: #e2e8f0;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  @media (min-width: 768px) {
+    body, #root {
+      height: 100vh;
+      overflow: hidden;
+    }
+  }
+}
+
+@layer utilities {
+  .draggable-card {
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
