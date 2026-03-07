@@ -8,33 +8,34 @@ export default function AGITrack() {
   const players = useGameStore((s) => s.players)
 
   return (
-    <div className="flex flex-col gap-1">
-      {([0, 1] as const).map((pi) => {
-        const agi = agiTrack[pi]
-        const isAtlantic = pi === 0
+    <div className="flex flex-col gap-2.5">
+      {([0, 1] as const).map((playerIndex) => {
+        const agi = agiTrack[playerIndex]
+        const isAtlantic = playerIndex === 0
         const color = isAtlantic ? 'bg-atlantic' : 'bg-continental'
-        const dotColor = isAtlantic ? 'bg-atlantic' : 'bg-continental'
         const textColor = isAtlantic ? 'text-atlantic' : 'text-continental'
 
         return (
-          <div key={pi} className="flex items-center gap-1.5">
-            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
-            <span className={`font-mono text-[9px] font-medium ${textColor} w-6 shrink-0 truncate`}>
-              {players[pi].name.split(' ')[0]}
-            </span>
-            <div className="flex gap-px flex-1">
+          <div key={playerIndex} className="grid grid-cols-[84px_minmax(0,1fr)_38px] items-center gap-2">
+            <div>
+              <p className={`font-mono text-[11px] font-semibold ${textColor}`}>{players[playerIndex].name.split(' ')[0]}</p>
+              <p className="font-mono text-[10px] text-ink-faint">AGI race</p>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
               {STEPS.map((step) => (
                 <div
                   key={step}
-                  className="relative flex-1 h-4 rounded-sm bg-border/30 flex items-center justify-center"
+                  className="relative flex h-8 items-center justify-center rounded-xl border border-white/75 bg-white/62 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]"
                 >
+                  <span className="font-mono text-[10px] text-ink-faint">{step}</span>
                   {agi === step && (
                     <motion.div
-                      layoutId={`agi-${pi}`}
-                      className={`absolute inset-0 rounded-sm ${color}`}
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                      layoutId={`agi-${playerIndex}`}
+                      className={`absolute inset-0 rounded-xl ${color} shadow-[0_10px_16px_rgba(17,32,56,0.15)]`}
+                      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                     >
-                      <span className="flex items-center justify-center h-full font-mono text-[9px] font-bold text-white">
+                      <span className="flex h-full items-center justify-center font-mono text-[10px] font-bold text-white">
                         {step}
                       </span>
                     </motion.div>
@@ -42,9 +43,8 @@ export default function AGITrack() {
                 </div>
               ))}
             </div>
-            <span className={`font-mono text-[9px] font-medium ${textColor} w-5 text-right shrink-0`}>
-              {agi}/6
-            </span>
+
+            <span className={`font-mono text-[11px] font-semibold ${textColor}`}>{agi}/6</span>
           </div>
         )
       })}

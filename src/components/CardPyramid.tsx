@@ -1,4 +1,4 @@
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useGameStore, canAfford, getEffectiveCost } from '../store/gameStore'
 import { isAvailable } from '../game/pyramid'
 import Card from './Card'
@@ -11,13 +11,8 @@ const ROWS: number[][] = [
   [6, 7, 8, 9],
 ]
 
-// Row 3 (bottom, most available) gets highest z-index
-// Available cards within a row get boosted further
 const ROW_Z: Record<number, number> = { 0: 10, 1: 20, 2: 30, 3: 40 }
-
-// Overlap: each row pulls up into the one above it
-// Negative margin eats into the previous row's space
-const ROW_OVERLAP = '-mt-6 sm:-mt-7 md:-mt-9'
+const ROW_OVERLAP = '-mt-6 sm:-mt-7 md:-mt-8 lg:-mt-9 xl:-mt-10'
 
 interface CardPyramidProps {
   dropRefs?: DropRefs
@@ -37,12 +32,15 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
   const pyramidKey = pyramid.map((node) => `${node.position}:${node.card.id}`).join('|')
 
   return (
-    <div key={pyramidKey} className="flex flex-col items-center">
+    <div key={pyramidKey} className="flex flex-col items-center py-2 md:py-4">
       {ROWS.map((positions, rowIndex) => (
-        <div
+        <motion.div
           key={`${pyramidKey}-${rowIndex}`}
-          className={`flex justify-center gap-1 sm:gap-1.5 md:gap-2 ${rowIndex > 0 ? ROW_OVERLAP : ''}`}
+          className={`flex justify-center gap-1.5 sm:gap-2 md:gap-3 ${rowIndex > 0 ? ROW_OVERLAP : ''}`}
           style={{ zIndex: ROW_Z[rowIndex] }}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, delay: rowIndex * 0.05 }}
         >
           <AnimatePresence mode="popLayout">
             {positions.map((pos) => {
@@ -53,18 +51,18 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                 return (
                   <div
                     key={`${pyramidKey}-empty-${pos}`}
-                    className="w-[4.5rem] h-24 sm:w-[5rem] sm:h-[6.75rem] md:w-24 md:h-[8.5rem] rounded-lg border border-dashed border-border/30 opacity-15"
-                  />
+                    className="relative h-28 w-[4.9rem] rounded-[18px] border border-dashed border-slate-300/80 bg-white/28 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] sm:h-[7rem] sm:w-[5.15rem] md:h-[7.35rem] md:w-[5.3rem] lg:h-[7.75rem] lg:w-[5.55rem] xl:h-[8.1rem] xl:w-[5.8rem]"
+                  >
+                    <div className="absolute inset-2 rounded-[14px] border border-white/40 bg-white/18" />
+                  </div>
                 )
               }
 
-              const avail = isAvailable(node.position, pyramid)
+              const available = isAvailable(node.position, pyramid)
               const selected = selectedCard === node.position
-
               const isFreeViaChain = node.card.chainFrom !== undefined
                 ? player.playedCards.includes(node.card.chainFrom)
                 : false
-
               const effectiveCost = getEffectiveCost(node.card)
               const affordable = isFreeViaChain || canAfford(player, effectiveCost)
 
@@ -72,7 +70,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                 <Card
                   key={`${pyramidKey}-${node.card.id}`}
                   node={node}
-                  available={avail}
+                  available={available}
                   selected={selected}
                   affordable={affordable}
                   isFreeViaChain={isFreeViaChain}
@@ -86,7 +84,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
               )
             })}
           </AnimatePresence>
-        </div>
+        </motion.div>
       ))}
     </div>
   )

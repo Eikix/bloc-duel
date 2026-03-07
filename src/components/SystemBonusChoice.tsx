@@ -9,10 +9,10 @@ interface SystemBonusChoiceProps {
 }
 
 const SYMBOL_STYLES: Record<SystemSymbol, { bg: string; border: string; text: string; icon: string }> = {
-  COMPUTE: { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700', icon: '\uD83D\uDDA5\uFE0F' },
-  FINANCE: { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', icon: '\uD83D\uDCB0' },
-  CYBER: { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700', icon: '\u2694\uFE0F' },
-  DIPLOMACY: { bg: 'bg-violet-50', border: 'border-violet-300', text: 'text-violet-700', icon: '\uD83D\uDD4A\uFE0F' },
+  COMPUTE: { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700', icon: '[C]' },
+  FINANCE: { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', icon: '[$]' },
+  CYBER: { bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700', icon: '[X]' },
+  DIPLOMACY: { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-700', icon: '[D]' },
 }
 
 export default function SystemBonusChoice({ playerName, options, onChoose }: SystemBonusChoiceProps) {
@@ -20,36 +20,36 @@ export default function SystemBonusChoice({ playerName, options, onChoose }: Sys
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle,rgba(17,32,56,0.18),rgba(17,32,56,0.55))] px-4 backdrop-blur-sm"
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        className="rounded-2xl bg-surface-raised p-6 text-center shadow-2xl border border-border max-w-sm mx-4"
+        initial={{ scale: 0.92, opacity: 0, y: 16 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 430, damping: 30 }}
+        className="panel-steel w-full max-w-xl rounded-[30px] px-5 py-6 text-center md:px-6"
       >
-        <h2 className="font-display text-xl font-black text-ink mb-1">
-          System Bonus
-        </h2>
-        <p className="text-sm text-ink-muted mb-4">
-          {playerName} has 3 different systems! Choose a bonus:
+        <p className="section-label mb-2">System threshold reached</p>
+        <h2 className="font-display text-3xl font-black text-ink">Choose a permanent doctrine</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-muted">
+          {playerName} now controls three different systems. Select one doctrine to permanently amplify.
         </p>
-        <div className="flex flex-col gap-2">
-          {options.map((sym) => {
-            const style = SYMBOL_STYLES[sym]
+
+        <div className="mt-5 flex flex-col gap-3">
+          {options.map((symbol) => {
+            const style = SYMBOL_STYLES[symbol]
+
             return (
               <button
-                key={sym}
-                onClick={() => onChoose(sym)}
-                className={`
-                  flex items-center gap-3 rounded-xl border-2 ${style.border} ${style.bg} px-4 py-3 transition
-                  hover:shadow-md hover:scale-[1.02] active:scale-[0.98]
-                `}
+                key={symbol}
+                onClick={() => onChoose(symbol)}
+                className={`flex items-center gap-4 rounded-[24px] border-2 ${style.border} ${style.bg} px-4 py-4 text-left shadow-[0_14px_24px_rgba(17,32,56,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_26px_rgba(17,32,56,0.12)]`}
               >
-                <span className="text-2xl">{style.icon}</span>
-                <div className="text-left flex-1">
-                  <p className={`font-display text-sm font-bold ${style.text}`}>{sym}</p>
-                  <p className="font-mono text-[11px] text-ink-muted">{SYSTEM_BONUS_LABELS[sym]}</p>
+                <span className="rounded-2xl bg-white/80 px-3 py-2 font-mono text-sm font-bold text-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
+                  {style.icon}
+                </span>
+                <div className="flex-1">
+                  <p className={`font-display text-lg font-black ${style.text}`}>{symbol}</p>
+                  <p className="mt-1 font-mono text-[11px] leading-relaxed text-ink-muted">{SYSTEM_BONUS_LABELS[symbol]}</p>
                 </div>
               </button>
             )

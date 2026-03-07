@@ -1,46 +1,49 @@
 import { motion } from 'framer-motion'
 import { useGameStore } from '../store/gameStore'
 
-const STEPS = Array.from({ length: 13 }, (_, i) => i - 6)
+const STEPS = Array.from({ length: 13 }, (_, index) => index - 6)
 
 export default function EscalationTrack() {
-  const esc = useGameStore((s) => s.escalationTrack)
+  const escalation = useGameStore((s) => s.escalationTrack)
 
   const markerColor =
-    esc < -2 ? 'bg-atlantic' :
-    esc < 0 ? 'bg-blue-400' :
-    esc === 0 ? 'bg-ink-faint' :
-    esc <= 2 ? 'bg-purple-400' :
+    escalation < -2 ? 'bg-atlantic' :
+    escalation < 0 ? 'bg-blue-400' :
+    escalation === 0 ? 'bg-ink-muted' :
+    escalation <= 2 ? 'bg-orange-400' :
     'bg-continental'
 
   return (
     <div>
-      <div className="flex gap-px rounded bg-border/30 p-px">
+      <div className="mb-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.14em]">
+        <span className="text-atlantic">Atlantic pressure</span>
+        <span className="text-ink-faint">Zero line</span>
+        <span className="text-continental">Continental pressure</span>
+      </div>
+
+      <div className="grid grid-cols-13 gap-1">
         {STEPS.map((step) => {
-          const isNeg = step < 0
-          const isPos = step > 0
-          let segBg = 'bg-white/50'
-          if (isNeg) segBg = 'bg-atlantic-light/60'
-          if (isPos) segBg = 'bg-continental-light/60'
-          if (step === 0) segBg = 'bg-white/80'
+          const segmentClass = step < 0
+            ? 'bg-atlantic-light/75'
+            : step > 0
+              ? 'bg-continental-light/72'
+              : 'bg-white/82'
 
           return (
             <div
               key={step}
-              className={`relative flex-1 h-4 rounded-sm ${segBg} flex items-center justify-center`}
+              className={`relative flex h-9 items-center justify-center rounded-xl border border-white/70 ${segmentClass} shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]`}
             >
               {(step === -6 || step === 0 || step === 6) && (
-                <span className="font-mono text-[7px] text-ink-faint">
-                  {step > 0 ? `+${step}` : step}
-                </span>
+                <span className="font-mono text-[10px] text-ink-faint">{step > 0 ? `+${step}` : step}</span>
               )}
-              {esc === step && (
+              {escalation === step && (
                 <motion.div
                   layoutId="esc-marker"
-                  className={`absolute inset-0 rounded-sm ${markerColor}`}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  className={`absolute inset-0 rounded-xl ${markerColor} shadow-[0_10px_18px_rgba(17,32,56,0.16)]`}
+                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                 >
-                  <span className="flex items-center justify-center h-full font-mono text-[8px] font-bold text-white">
+                  <span className="flex h-full items-center justify-center font-mono text-[10px] font-bold text-white">
                     {step > 0 ? `+${step}` : step}
                   </span>
                 </motion.div>
@@ -48,10 +51,6 @@ export default function EscalationTrack() {
             </div>
           )
         })}
-      </div>
-      <div className="flex justify-between mt-0.5">
-        <span className="font-mono text-[8px] text-atlantic">Atlantic</span>
-        <span className="font-mono text-[8px] text-continental">Continental</span>
       </div>
     </div>
   )

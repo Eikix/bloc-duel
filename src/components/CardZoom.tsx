@@ -15,10 +15,30 @@ interface CardZoomProps {
 }
 
 const TYPE_STYLES: Record<CardType, { stripe: string; bg: string; badge: string; text: string }> = {
-  AI: { stripe: 'bg-blue-500', bg: 'bg-gradient-to-b from-blue-50 to-white', badge: 'bg-blue-500', text: 'text-blue-700' },
-  ECONOMY: { stripe: 'bg-amber-500', bg: 'bg-gradient-to-b from-amber-50 to-white', badge: 'bg-amber-500', text: 'text-amber-700' },
-  MILITARY: { stripe: 'bg-red-500', bg: 'bg-gradient-to-b from-red-50 to-white', badge: 'bg-red-500', text: 'text-red-700' },
-  SYSTEM: { stripe: 'bg-emerald-500', bg: 'bg-gradient-to-b from-emerald-50 to-white', badge: 'bg-emerald-500', text: 'text-emerald-700' },
+  AI: {
+    stripe: 'bg-blue-500',
+    bg: 'bg-[linear-gradient(180deg,rgba(240,247,255,0.98),rgba(217,231,252,0.95))]',
+    badge: 'bg-blue-500 text-white',
+    text: 'text-blue-800',
+  },
+  ECONOMY: {
+    stripe: 'bg-amber-500',
+    bg: 'bg-[linear-gradient(180deg,rgba(255,251,239,0.98),rgba(251,235,189,0.94))]',
+    badge: 'bg-amber-500 text-white',
+    text: 'text-amber-900',
+  },
+  MILITARY: {
+    stripe: 'bg-red-500',
+    bg: 'bg-[linear-gradient(180deg,rgba(255,242,239,0.98),rgba(250,218,212,0.94))]',
+    badge: 'bg-red-500 text-white',
+    text: 'text-red-800',
+  },
+  SYSTEM: {
+    stripe: 'bg-emerald-500',
+    bg: 'bg-[linear-gradient(180deg,rgba(239,255,247,0.98),rgba(213,244,229,0.94))]',
+    badge: 'bg-emerald-500 text-white',
+    text: 'text-emerald-800',
+  },
 }
 
 export default function CardZoom({
@@ -32,98 +52,92 @@ export default function CardZoom({
   const chainToName = card.chainTo !== undefined ? getCardById(card.chainTo).name : null
 
   const effects: { label: string; value: string }[] = []
-  const e = card.effect
-  if (e.agi) effects.push({ label: 'AGI', value: `+${e.agi}` })
-  if (e.escalation) effects.push({ label: 'Escalation', value: `${e.escalation > 0 ? '+' : ''}${e.escalation}` })
-  if (e.capital) effects.push({ label: 'Capital', value: `+${e.capital}` })
-  if (e.energyPerTurn) effects.push({ label: `${RESOURCE_ICONS.energy} Energy/turn`, value: `+${e.energyPerTurn}` })
-  if (e.materialsPerTurn) effects.push({ label: `${RESOURCE_ICONS.materials} Materials/turn`, value: `+${e.materialsPerTurn}` })
-  if (e.computePerTurn) effects.push({ label: `${RESOURCE_ICONS.compute} Compute/turn`, value: `+${e.computePerTurn}` })
-  if (e.symbol) effects.push({ label: 'System', value: e.symbol })
-  if (card.symbol) effects.push({ label: 'System', value: card.symbol })
+  const effect = card.effect
+  if (effect.agi) effects.push({ label: 'AGI gain', value: `+${effect.agi}` })
+  if (effect.escalation) effects.push({ label: 'Escalation shift', value: `${effect.escalation > 0 ? '+' : ''}${effect.escalation}` })
+  if (effect.capital) effects.push({ label: 'Immediate capital', value: `+${effect.capital}` })
+  if (effect.energyPerTurn) effects.push({ label: `${RESOURCE_ICONS.energy} Energy income`, value: `+${effect.energyPerTurn}` })
+  if (effect.materialsPerTurn) effects.push({ label: `${RESOURCE_ICONS.materials} Materials income`, value: `+${effect.materialsPerTurn}` })
+  if (effect.computePerTurn) effects.push({ label: `${RESOURCE_ICONS.compute} Compute income`, value: `+${effect.computePerTurn}` })
+  if (effect.symbol) effects.push({ label: 'System unlocked', value: effect.symbol })
+  if (card.symbol) effects.push({ label: 'System unlocked', value: card.symbol })
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/20 backdrop-blur-[2px]"
+      transition={{ duration: 0.18 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle,rgba(17,32,56,0.18),rgba(17,32,56,0.52))] px-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.85, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-        className={`w-56 rounded-2xl border border-border/60 ${style.bg} shadow-2xl overflow-hidden`}
-        onClick={(ev) => ev.stopPropagation()}
+        initial={{ scale: 0.88, opacity: 0, y: 16 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.94, opacity: 0, y: 16 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+        className={`relative w-full max-w-lg overflow-hidden rounded-[30px] border border-white/75 ${style.bg} shadow-[0_38px_80px_rgba(17,32,56,0.28)]`}
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Color bar */}
-        <div className={`${style.stripe} h-2`} />
+        <div className={`h-2.5 ${style.stripe}`} />
+        <div className="absolute inset-0 bg-[linear-gradient(155deg,rgba(255,255,255,0.3),transparent_45%,rgba(17,32,56,0.05))] pointer-events-none" />
 
-        <div className="px-4 pt-3 pb-4">
-          {/* Type badge + cost */}
-          <div className="flex items-center justify-between mb-2">
-            <span className={`${style.badge} rounded-md px-2 py-0.5 font-mono text-[10px] font-medium tracking-wide text-white uppercase`}>
-              {card.type}
-            </span>
-            <span className="font-mono text-sm font-bold text-ink-muted">
-              {isFreeViaChain ? (
-                <span className="text-green-600">FREE</span>
-              ) : isFree ? 'free' : formatCost(displayCost)}
-            </span>
+        <div className="relative px-5 py-5 md:px-6 md:py-6">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <p className="section-label mb-2">Dossier inspection</p>
+              <h3 className={`font-display text-3xl font-black leading-[0.98] ${style.text}`}>{card.name}</h3>
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+              <span className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.18em] ${style.badge}`}>
+                {card.type}
+              </span>
+              <span className="rounded-full bg-white/78 px-3 py-1 font-mono text-sm font-bold text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+                {isFreeViaChain ? 'FREE via chain' : isFree ? 'Free' : formatCost(displayCost)}
+              </span>
+            </div>
           </div>
 
-          {/* Name */}
-          <h3 className={`font-display text-lg font-bold leading-tight ${style.text} mb-3`}>
-            {card.name}
-          </h3>
-
-          {/* Effects list */}
-          <div className="space-y-1.5 mb-3">
-            {effects.map((fx, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className="font-body text-xs text-ink-muted">{fx.label}</span>
-                <span className="font-mono text-sm font-bold text-ink">{fx.value}</span>
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+            {effects.map((fx) => (
+              <div
+                key={`${fx.label}-${fx.value}`}
+                className="rounded-2xl border border-white/76 bg-white/62 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+              >
+                <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">{fx.label}</p>
+                <p className="mt-1 font-display text-lg font-black text-ink">{fx.value}</p>
               </div>
             ))}
           </div>
 
-          {/* Chain info */}
           {(card.chainFrom !== undefined || card.chainTo !== undefined) && (
-            <div className="rounded-lg bg-violet-50 border border-violet-200/60 px-2.5 py-1.5 mb-3">
-              {chainFromName && (
-                <p className="font-mono text-[10px] text-violet-600">
-                  ⛓ Chains from: <span className="font-semibold">{chainFromName}</span>
-                </p>
-              )}
-              {chainToName && (
-                <p className="font-mono text-[10px] text-violet-600">
-                  ⛓ Chains to: <span className="font-semibold">{chainToName}</span>
-                </p>
-              )}
+            <div className="mb-4 rounded-[22px] border border-violet-200/75 bg-violet-50/78 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
+              <p className="section-label mb-2 text-violet-500">Chain protocol</p>
+              <div className="space-y-1 font-mono text-xs text-violet-700">
+                {chainFromName && <p>Unlock for free if you already deployed {chainFromName}.</p>}
+                {chainToName && <p>This dossier discounts into {chainToName} later.</p>}
+              </div>
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex gap-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             <button
               onClick={onPlay}
               disabled={!affordable && !isFreeViaChain}
-              className={`flex-1 rounded-lg py-2 font-mono text-xs font-semibold text-white transition ${
+              className={`rounded-2xl px-4 py-3 font-mono text-sm font-semibold text-white transition ${
                 affordable || isFreeViaChain
-                  ? 'bg-ink hover:bg-ink/80 shadow-sm'
-                  : 'bg-ink-faint cursor-not-allowed'
+                  ? 'bg-[linear-gradient(135deg,#112038,#274e79)] shadow-[0_18px_28px_rgba(17,32,56,0.2)] hover:-translate-y-0.5 hover:brightness-105'
+                  : 'cursor-not-allowed bg-ink-faint/70'
               }`}
             >
-              Play
+              Deploy dossier
             </button>
             <button
               onClick={onDiscard}
-              className="flex-1 rounded-lg border border-border py-2 font-mono text-xs font-medium text-ink-muted transition hover:bg-surface hover:text-ink"
+              className="rounded-2xl border border-white/78 bg-white/64 px-4 py-3 font-mono text-sm font-semibold text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] transition hover:-translate-y-0.5 hover:text-ink"
             >
-              Sell +{sellValue}
+              Salvage for +{sellValue}
             </button>
           </div>
         </div>
