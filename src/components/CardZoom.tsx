@@ -36,7 +36,6 @@ export default function CardZoom({
   if (e.energyPerTurn) effects.push({ label: `${RESOURCE_ICONS.energy} Energy/turn`, value: `+${e.energyPerTurn}` })
   if (e.materialsPerTurn) effects.push({ label: `${RESOURCE_ICONS.materials} Materials/turn`, value: `+${e.materialsPerTurn}` })
   if (e.computePerTurn) effects.push({ label: `${RESOURCE_ICONS.compute} Compute/turn`, value: `+${e.computePerTurn}` })
-  if (e.capitalPerTurn) effects.push({ label: `${RESOURCE_ICONS.capital} Capital/turn`, value: `+${e.capitalPerTurn}` })
   if (e.symbol) effects.push({ label: 'System', value: e.symbol })
   if (card.symbol) effects.push({ label: 'System', value: card.symbol })
 

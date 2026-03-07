@@ -189,7 +189,6 @@ function applyEffect(
     energyPerTurn?: number
     materialsPerTurn?: number
     computePerTurn?: number
-    capitalPerTurn?: number
     symbol?: SystemSymbol
   },
 ): { agiTrack: [number, number]; escalationTrack: number; phase: GamePhase } {
@@ -212,7 +211,6 @@ function applyEffect(
   if (effect.energyPerTurn) player.production.energy += effect.energyPerTurn
   if (effect.materialsPerTurn) player.production.materials += effect.materialsPerTurn
   if (effect.computePerTurn) player.production.compute += effect.computePerTurn
-  if (effect.capitalPerTurn) player.capital += effect.capitalPerTurn
   if (effect.symbol) player.systems.push(effect.symbol)
 
   return {

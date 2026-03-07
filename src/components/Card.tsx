@@ -43,7 +43,6 @@ function formatEffects(effect: CardEffect, symbol?: SystemSymbol): string[] {
   if (effect.energyPerTurn) parts.push(`${RESOURCE_ICONS.energy}+${effect.energyPerTurn}`)
   if (effect.materialsPerTurn) parts.push(`${RESOURCE_ICONS.materials}+${effect.materialsPerTurn}`)
   if (effect.computePerTurn) parts.push(`${RESOURCE_ICONS.compute}+${effect.computePerTurn}`)
-  if (effect.capitalPerTurn) parts.push(`${RESOURCE_ICONS.capital}+${effect.capitalPerTurn}`)
   if (effect.symbol) parts.push(effect.symbol.slice(0, 3))
   if (symbol) parts.push(symbol.slice(0, 3))
   return parts

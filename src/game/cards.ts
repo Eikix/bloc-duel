@@ -15,7 +15,6 @@ export interface CardEffect {
   energyPerTurn?: number
   materialsPerTurn?: number
   computePerTurn?: number
-  capitalPerTurn?: number
   symbol?: SystemSymbol
 }
 
