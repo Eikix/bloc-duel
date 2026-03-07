@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod tests {
+    use bloc_duel::models::{
+        Game, HeroPool, PendingChoice, PlayerState, Pyramid, m_Game, m_HeroPool, m_PendingChoice,
+        m_PlayerState, m_Pyramid,
+    };
+    use bloc_duel::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait, actions};
     use dojo::model::{ModelStorage, ModelStorageTest};
     use dojo::world::{WorldStorageTrait, world};
     use dojo_cairo_test::{
         ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait,
         spawn_test_world,
     };
-    use bloc_duel::models::{
-        Game, PlayerState, Pyramid, HeroPool, PendingChoice,
-        m_Game, m_PlayerState, m_Pyramid, m_HeroPool, m_PendingChoice,
-    };
-    use bloc_duel::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait, actions};
     use starknet::ContractAddress;
 
     fn namespace_def() -> NamespaceDef {

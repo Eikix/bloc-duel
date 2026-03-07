@@ -17,18 +17,18 @@ pub trait IActions<T> {
 
 #[dojo::contract]
 pub mod actions {
-    #[allow(unused_imports)]
-    use dojo::model::ModelStorage;
-    use core::poseidon::poseidon_hash_span;
-    #[allow(unused_imports)]
-    use starknet::{ContractAddress, get_caller_address, get_tx_info};
     use bloc_duel::cards::{get_card, get_cards_for_age};
     use bloc_duel::heroes::{get_hero, hero_count};
-    use bloc_duel::pyramid as pyramid_logic;
-    use bloc_duel::shuffle::{select_n, shuffle_with_seed};
     use bloc_duel::models::{
         Game, GamePhase, HeroPool, PendingChoice, PlayerState, Pyramid, SystemType, WinCondition,
     };
+    use bloc_duel::pyramid as pyramid_logic;
+    use bloc_duel::shuffle::{select_n, shuffle_with_seed};
+    use core::poseidon::poseidon_hash_span;
+    #[allow(unused_imports)]
+    use dojo::model::ModelStorage;
+    #[allow(unused_imports)]
+    use starknet::{ContractAddress, get_caller_address, get_tx_info};
     use super::IActions;
 
     #[abi(embed_v0)]
@@ -36,9 +36,15 @@ pub mod actions {
         fn create_game(ref self: ContractState) -> u32 {
             let caller = get_caller_address();
             let tx_info = get_tx_info().unbox();
-            let game_seed = poseidon_hash_span(array![caller.into(), tx_info.transaction_hash].span());
+            let game_seed = poseidon_hash_span(
+                array![caller.into(), tx_info.transaction_hash].span(),
+            );
             let raw_id = felt_to_u32(game_seed);
-            let game_id = if raw_id == 0 { 1 } else { raw_id };
+            let game_id = if raw_id == 0 {
+                1
+            } else {
+                raw_id
+            };
 
             let empty_address = zero_address();
 
@@ -170,10 +176,7 @@ pub mod actions {
             let pyramid = pyramid_from_cards(game_id, shuffled);
 
             let (hero_ids, used_mask) = select_n(
-                poseidon_hash_span(array![game.seed, 999].span()),
-                hero_count(),
-                3,
-                0,
+                poseidon_hash_span(array![game.seed, 999].span()), hero_count(), 3, 0,
             );
             let hero_pool = HeroPool {
                 game_id,
@@ -225,11 +228,25 @@ pub mod actions {
 
             if game.current_player == 0 {
                 let chain_active = chain_is_active(@p0, card.chain_from);
-                let energy_cost = if chain_active { 0 } else { card.energy_cost };
-                let materials_cost = if chain_active { 0 } else { card.materials_cost };
-                let compute_cost = if chain_active { 0 } else { card.compute_cost };
+                let energy_cost = if chain_active {
+                    0
+                } else {
+                    card.energy_cost
+                };
+                let materials_cost = if chain_active {
+                    0
+                } else {
+                    card.materials_cost
+                };
+                let compute_cost = if chain_active {
+                    0
+                } else {
+                    card.compute_cost
+                };
 
-                assert(can_afford(@p0, energy_cost, materials_cost, compute_cost, 0), 'cannot afford');
+                assert(
+                    can_afford(@p0, energy_cost, materials_cost, compute_cost, 0), 'cannot afford',
+                );
                 pay_cost(ref p0, energy_cost, materials_cost, compute_cost, 0);
                 apply_common_effects(
                     ref game,
@@ -250,11 +267,25 @@ pub mod actions {
                 }
             } else {
                 let chain_active = chain_is_active(@p1, card.chain_from);
-                let energy_cost = if chain_active { 0 } else { card.energy_cost };
-                let materials_cost = if chain_active { 0 } else { card.materials_cost };
-                let compute_cost = if chain_active { 0 } else { card.compute_cost };
+                let energy_cost = if chain_active {
+                    0
+                } else {
+                    card.energy_cost
+                };
+                let materials_cost = if chain_active {
+                    0
+                } else {
+                    card.materials_cost
+                };
+                let compute_cost = if chain_active {
+                    0
+                } else {
+                    card.compute_cost
+                };
 
-                assert(can_afford(@p1, energy_cost, materials_cost, compute_cost, 0), 'cannot afford');
+                assert(
+                    can_afford(@p1, energy_cost, materials_cost, compute_cost, 0), 'cannot afford',
+                );
                 pay_cost(ref p1, energy_cost, materials_cost, compute_cost, 0);
                 apply_common_effects(
                     ref game,
@@ -345,11 +376,15 @@ pub mod actions {
             if game.current_player == 0 {
                 let surcharge: u16 = (p0.hero_count * 2).into();
                 assert(
-                    can_afford(@p0, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge),
+                    can_afford(
+                        @p0, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge,
+                    ),
                     'cannot afford',
                 );
 
-                pay_cost(ref p0, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge);
+                pay_cost(
+                    ref p0, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge,
+                );
                 apply_common_effects(
                     ref game,
                     ref p0,
@@ -370,11 +405,15 @@ pub mod actions {
             } else {
                 let surcharge: u16 = (p1.hero_count * 2).into();
                 assert(
-                    can_afford(@p1, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge),
+                    can_afford(
+                        @p1, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge,
+                    ),
                     'cannot afford',
                 );
 
-                pay_cost(ref p1, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge);
+                pay_cost(
+                    ref p1, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge,
+                );
                 apply_common_effects(
                     ref game,
                     ref p1,
@@ -469,9 +508,15 @@ pub mod actions {
             assert(!pending.active, 'pending choice');
 
             game.age += 1;
-            game.current_player = if game.current_player == 0 { 1 } else { 0 };
+            game.current_player = if game.current_player == 0 {
+                1
+            } else {
+                0
+            };
             game.phase = GamePhase::Drafting;
-            game.seed = poseidon_hash_span(array![game.seed, game.age.into(), game_id.into()].span());
+            game
+                .seed =
+                    poseidon_hash_span(array![game.seed, game.age.into(), game_id.into()].span());
 
             let shuffled = deal_age_cards(game.seed, game.age);
             let pyramid = pyramid_from_cards(game_id, shuffled);
@@ -568,7 +613,9 @@ pub mod actions {
         }
     }
 
-    fn is_current_player(caller: ContractAddress, game: @Game, p0: @PlayerState, p1: @PlayerState) -> bool {
+    fn is_current_player(
+        caller: ContractAddress, game: @Game, p0: @PlayerState, p1: @PlayerState,
+    ) -> bool {
         if *game.current_player == 0 {
             caller == *p0.address
         } else {
@@ -722,9 +769,7 @@ pub mod actions {
                     player.compute_bonus = true;
                 }
             },
-            SystemType::Finance => {
-                player.finance_bonus = true;
-            },
+            SystemType::Finance => { player.finance_bonus = true; },
             SystemType::Cyber => {
                 if !player.cyber_bonus {
                     player.energy_prod += 2;
@@ -742,10 +787,7 @@ pub mod actions {
     }
 
     fn resolve_system_progress(
-        ref game: Game,
-        ref player: PlayerState,
-        ref pending: PendingChoice,
-        player_index: u8,
+        ref game: Game, ref player: PlayerState, ref pending: PendingChoice, player_index: u8,
     ) {
         if player.compute_count >= 2 {
             apply_system_bonus(ref player, SystemType::Compute);
@@ -775,7 +817,11 @@ pub mod actions {
         }
 
         if unique == 4 {
-            let winner = if player_index == 0 { 1 } else { 2 };
+            let winner = if player_index == 0 {
+                1
+            } else {
+                2
+            };
             end_game(ref game, winner, WinCondition::SystemsDominance);
             pending.active = false;
             return;
@@ -847,16 +893,24 @@ pub mod actions {
             return;
         }
 
-        game.current_player = if game.current_player == 0 { 1 } else { 0 };
+        game.current_player = if game.current_player == 0 {
+            1
+        } else {
+            0
+        };
 
         if game.current_player == 0 {
-            let income: u16 = p0.energy_prod.into() + p0.materials_prod.into() + p0.compute_prod.into();
+            let income: u16 = p0.energy_prod.into()
+                + p0.materials_prod.into()
+                + p0.compute_prod.into();
             p0.capital += income;
             if p0.finance_bonus {
                 p0.capital += 3;
             }
         } else {
-            let income: u16 = p1.energy_prod.into() + p1.materials_prod.into() + p1.compute_prod.into();
+            let income: u16 = p1.energy_prod.into()
+                + p1.materials_prod.into()
+                + p1.compute_prod.into();
             p1.capital += income;
             if p1.finance_bonus {
                 p1.capital += 3;

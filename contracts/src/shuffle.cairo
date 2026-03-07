@@ -57,7 +57,9 @@ pub fn shuffle_with_seed(mut seed: felt252, items: Array<u8>) -> Array<u8> {
     out
 }
 
-pub fn select_n(mut seed: felt252, pool_size: u8, n: u8, mut exclude_mask: u16) -> (Array<u8>, u16) {
+pub fn select_n(
+    mut seed: felt252, pool_size: u8, n: u8, mut exclude_mask: u16,
+) -> (Array<u8>, u16) {
     let mut selected = array![];
 
     if n == 0 || pool_size == 0 {

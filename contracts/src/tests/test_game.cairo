@@ -1,5 +1,10 @@
 #[cfg(test)]
 mod tests {
+    use bloc_duel::models::{
+        Game, GamePhase, HeroPool, PendingChoice, PlayerState, Pyramid, SystemType, WinCondition,
+        m_Game, m_HeroPool, m_PendingChoice, m_PlayerState, m_Pyramid,
+    };
+    use bloc_duel::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait, actions};
     use dojo::model::{ModelStorage, ModelStorageTest};
     use dojo::world::{WorldStorageTrait, world};
     use dojo_cairo_test::{
@@ -8,12 +13,6 @@ mod tests {
     };
     use starknet::ContractAddress;
     use starknet::testing::set_contract_address;
-
-    use bloc_duel::models::{
-        Game, GamePhase, HeroPool, PendingChoice, PlayerState, Pyramid, SystemType, WinCondition,
-        m_Game, m_HeroPool, m_PendingChoice, m_PlayerState, m_Pyramid,
-    };
-    use bloc_duel::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait, actions};
 
     fn namespace_def() -> NamespaceDef {
         NamespaceDef {
@@ -38,7 +37,9 @@ mod tests {
             .span()
     }
 
-    fn setup_game() -> (dojo::world::WorldStorage, IActionsDispatcher, u32, ContractAddress, ContractAddress) {
+    fn setup_game() -> (
+        dojo::world::WorldStorage, IActionsDispatcher, u32, ContractAddress, ContractAddress,
+    ) {
         let ndef = namespace_def();
         let mut world = spawn_test_world(world::TEST_CLASS_HASH, [ndef].span());
         world.sync_perms_and_inits(contract_defs());
