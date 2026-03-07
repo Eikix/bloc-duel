@@ -33,3 +33,9 @@ result/
 # Environment
 .env
 .env.local
+
+#AI
+.agent
+.agents
+.claude
+skills/

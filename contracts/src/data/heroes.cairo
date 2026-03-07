@@ -1,4 +1,4 @@
-use bloc_duel::models::{HeroData, SystemType};
+use bloc_duel::types::{HeroData, SystemType};
 
 pub fn get_hero(id: u8) -> HeroData {
     match id {

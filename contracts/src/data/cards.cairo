@@ -1,4 +1,4 @@
-use bloc_duel::models::{CardData, CardType, SystemType};
+use bloc_duel::types::{CardData, CardType, SystemType};
 
 pub fn get_card(id: u8) -> CardData {
     match id {

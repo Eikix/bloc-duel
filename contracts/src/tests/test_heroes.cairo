@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use bloc_duel::heroes::get_hero;
-    use bloc_duel::models::SystemType;
+    use bloc_duel::data::heroes::get_hero;
+    use bloc_duel::types::SystemType;
 
     #[test]
     fn test_get_hero_0_alan_arden() {

@@ -1,8 +1,7 @@
-pub mod cards;
-pub mod heroes;
+pub mod data;
+pub mod helpers;
 pub mod models;
-pub mod pyramid;
-pub mod shuffle;
+pub mod types;
 
 pub mod systems {
     pub mod actions;

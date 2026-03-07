@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use bloc_duel::models::{
-        Game, HeroPool, PendingChoice, PlayerState, Pyramid, m_Game, m_HeroPool, m_PendingChoice,
-        m_PlayerState, m_Pyramid,
-    };
+    use bloc_duel::models::game::{Game, m_Game};
+    use bloc_duel::models::hero_pool::{HeroPool, m_HeroPool};
+    use bloc_duel::models::pending_choice::{PendingChoice, m_PendingChoice};
+    use bloc_duel::models::player_state::{PlayerState, m_PlayerState};
+    use bloc_duel::models::pyramid::{Pyramid, m_Pyramid};
     use bloc_duel::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait, actions};
     use dojo::model::{ModelStorage, ModelStorageTest};
     use dojo::world::{WorldStorageTrait, world};

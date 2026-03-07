@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use bloc_duel::cards::{card_count, get_card, get_cards_for_age};
-    use bloc_duel::models::{CardType, SystemType};
+    use bloc_duel::data::cards::{card_count, get_card, get_cards_for_age};
+    use bloc_duel::types::{CardType, SystemType};
 
     #[test]
     fn test_get_card_0_neural_relay() {

@@ -1,8 +1,4 @@
-use bloc_duel::models::SystemType;
-
-// ---------------------------------------------------------------------------
-// Actions interface — all game mutations go through here.
-// ---------------------------------------------------------------------------
+use bloc_duel::types::SystemType;
 
 #[starknet::interface]
 pub trait IActions<T> {
@@ -17,13 +13,15 @@ pub trait IActions<T> {
 
 #[dojo::contract]
 pub mod actions {
-    use bloc_duel::cards::{get_card, get_cards_for_age};
-    use bloc_duel::heroes::{get_hero, hero_count};
-    use bloc_duel::models::{
-        Game, GamePhase, HeroPool, PendingChoice, PlayerState, Pyramid, SystemType, WinCondition,
-    };
-    use bloc_duel::pyramid as pyramid_logic;
-    use bloc_duel::shuffle::{select_n, shuffle_with_seed};
+    use bloc_duel::data::cards::{get_card, get_cards_for_age};
+    use bloc_duel::data::heroes::{get_hero, hero_count};
+    use bloc_duel::helpers::shuffle::{select_n, shuffle_with_seed};
+    use bloc_duel::models::game::{Game, GameTrait};
+    use bloc_duel::models::hero_pool::{HeroPool, HeroPoolTrait};
+    use bloc_duel::models::pending_choice::{PendingChoice, PendingChoiceTrait};
+    use bloc_duel::models::player_state::{PlayerState, PlayerStateTrait};
+    use bloc_duel::models::pyramid::{Pyramid, PyramidTrait};
+    use bloc_duel::types::{CardData, GamePhase, HeroData, SystemType, WinCondition};
     use core::poseidon::poseidon_hash_span;
     #[allow(unused_imports)]
     use dojo::model::ModelStorage;
@@ -63,47 +61,8 @@ pub mod actions {
                 seed: game_seed,
             };
 
-            let p0 = PlayerState {
-                game_id,
-                player_index: 0,
-                address: caller,
-                capital: 3,
-                energy_prod: 0,
-                materials_prod: 0,
-                compute_prod: 0,
-                compute_count: 0,
-                finance_count: 0,
-                cyber_count: 0,
-                diplomacy_count: 0,
-                compute_bonus: false,
-                finance_bonus: false,
-                cyber_bonus: false,
-                diplomacy_bonus: false,
-                made_system_choice: false,
-                hero_count: 0,
-                played_cards: 0,
-            };
-
-            let p1 = PlayerState {
-                game_id,
-                player_index: 1,
-                address: empty_address,
-                capital: 3,
-                energy_prod: 0,
-                materials_prod: 0,
-                compute_prod: 0,
-                compute_count: 0,
-                finance_count: 0,
-                cyber_count: 0,
-                diplomacy_count: 0,
-                compute_bonus: false,
-                finance_bonus: false,
-                cyber_bonus: false,
-                diplomacy_bonus: false,
-                made_system_choice: false,
-                hero_count: 0,
-                played_cards: 0,
-            };
+            let p0 = PlayerStateTrait::new(game_id, 0, caller);
+            let p1 = PlayerStateTrait::new(game_id, 1, empty_address);
 
             let pyramid = Pyramid {
                 game_id,
@@ -131,16 +90,7 @@ pub mod actions {
                 used_mask: 0,
             };
 
-            let pending = PendingChoice {
-                game_id,
-                active: false,
-                player_index: 0,
-                option_count: 0,
-                option_0: SystemType::None,
-                option_1: SystemType::None,
-                option_2: SystemType::None,
-                option_3: SystemType::None,
-            };
+            let pending = PendingChoiceTrait::new(game_id);
 
             let mut world = self.world_default();
             world.write_model(@game);
@@ -173,7 +123,7 @@ pub mod actions {
             game.seed = poseidon_hash_span(array![tx_seed, game_id.into(), 1].span());
 
             let shuffled = deal_age_cards(game.seed, 1);
-            let pyramid = pyramid_from_cards(game_id, shuffled);
+            let pyramid = PyramidTrait::from_cards(game_id, shuffled);
 
             let (hero_ids, used_mask) = select_n(
                 poseidon_hash_span(array![game.seed, 999].span()), hero_count(), 3, 0,
@@ -189,16 +139,7 @@ pub mod actions {
                 used_mask,
             };
 
-            let pending = PendingChoice {
-                game_id,
-                active: false,
-                player_index: 0,
-                option_count: 0,
-                option_0: SystemType::None,
-                option_1: SystemType::None,
-                option_2: SystemType::None,
-                option_3: SystemType::None,
-            };
+            let pending = PendingChoiceTrait::new(game_id);
 
             world.write_model(@game);
             world.write_model(@p1);
@@ -221,92 +162,16 @@ pub mod actions {
             assert(game.phase == GamePhase::Drafting, 'not drafting');
             assert(!pending.active, 'pending choice');
             assert(is_current_player(caller, @game, @p0, @p1), 'not your turn');
-            validate_position(position, pyramid.taken_mask);
+            pyramid.validate_and_take(position);
 
-            let card_id = get_slot(@pyramid, position);
+            let card_id = pyramid.get_slot(position);
             let card = get_card(card_id);
 
             if game.current_player == 0 {
-                let chain_active = chain_is_active(@p0, card.chain_from);
-                let energy_cost = if chain_active {
-                    0
-                } else {
-                    card.energy_cost
-                };
-                let materials_cost = if chain_active {
-                    0
-                } else {
-                    card.materials_cost
-                };
-                let compute_cost = if chain_active {
-                    0
-                } else {
-                    card.compute_cost
-                };
-
-                assert(
-                    can_afford(@p0, energy_cost, materials_cost, compute_cost, 0), 'cannot afford',
-                );
-                pay_cost(ref p0, energy_cost, materials_cost, compute_cost, 0);
-                apply_common_effects(
-                    ref game,
-                    ref p0,
-                    0,
-                    card.agi,
-                    card.escalation,
-                    card.capital,
-                    card.energy_per_turn,
-                    card.materials_per_turn,
-                    card.compute_per_turn,
-                    card.capital_per_turn,
-                );
-                p0.played_cards = p0.played_cards | bit_for_card(card.id);
-                if card.symbol != SystemType::None {
-                    grant_symbol(ref p0, card.symbol);
-                    resolve_system_progress(ref game, ref p0, ref pending, 0);
-                }
+                play_card_for_player(ref game, ref p0, ref pending, 0, @card);
             } else {
-                let chain_active = chain_is_active(@p1, card.chain_from);
-                let energy_cost = if chain_active {
-                    0
-                } else {
-                    card.energy_cost
-                };
-                let materials_cost = if chain_active {
-                    0
-                } else {
-                    card.materials_cost
-                };
-                let compute_cost = if chain_active {
-                    0
-                } else {
-                    card.compute_cost
-                };
-
-                assert(
-                    can_afford(@p1, energy_cost, materials_cost, compute_cost, 0), 'cannot afford',
-                );
-                pay_cost(ref p1, energy_cost, materials_cost, compute_cost, 0);
-                apply_common_effects(
-                    ref game,
-                    ref p1,
-                    1,
-                    card.agi,
-                    card.escalation,
-                    card.capital,
-                    card.energy_per_turn,
-                    card.materials_per_turn,
-                    card.compute_per_turn,
-                    card.capital_per_turn,
-                );
-                p1.played_cards = p1.played_cards | bit_for_card(card.id);
-                if card.symbol != SystemType::None {
-                    grant_symbol(ref p1, card.symbol);
-                    resolve_system_progress(ref game, ref p1, ref pending, 1);
-                }
+                play_card_for_player(ref game, ref p1, ref pending, 1, @card);
             }
-
-            pyramid.taken_mask = pyramid_logic::mark_taken(pyramid.taken_mask, position);
 
             if game.phase != GamePhase::GameOver && !pending.active {
                 next_turn(ref game, ref p0, ref p1, ref pyramid);
@@ -334,7 +199,7 @@ pub mod actions {
             assert(game.phase == GamePhase::Drafting, 'not drafting');
             assert(!pending.active, 'pending choice');
             assert(is_current_player(caller, @game, @p0, @p1), 'not your turn');
-            validate_position(position, pyramid.taken_mask);
+            pyramid.validate_and_take(position);
 
             if game.current_player == 0 {
                 p0.capital += game.age.into();
@@ -342,7 +207,6 @@ pub mod actions {
                 p1.capital += game.age.into();
             }
 
-            pyramid.taken_mask = pyramid_logic::mark_taken(pyramid.taken_mask, position);
             next_turn(ref game, ref p0, ref p1, ref pyramid);
 
             world.write_model(@game);
@@ -368,72 +232,18 @@ pub mod actions {
             assert(!pending.active, 'pending choice');
             assert(is_current_player(caller, @game, @p0, @p1), 'not your turn');
             assert(hero_slot <= 2, 'invalid hero');
+            assert(!hero_pool.is_slot_taken(hero_slot), 'hero taken');
 
-            let hero_id = get_hero_slot(@hero_pool, hero_slot);
-            assert(!is_hero_slot_taken(@hero_pool, hero_slot), 'hero taken');
-
+            let hero_id = hero_pool.get_slot(hero_slot);
             let hero = get_hero(hero_id);
+
             if game.current_player == 0 {
-                let surcharge: u16 = (p0.hero_count * 2).into();
-                assert(
-                    can_afford(
-                        @p0, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge,
-                    ),
-                    'cannot afford',
-                );
-
-                pay_cost(
-                    ref p0, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge,
-                );
-                apply_common_effects(
-                    ref game,
-                    ref p0,
-                    0,
-                    hero.agi,
-                    hero.escalation,
-                    hero.capital,
-                    hero.energy_per_turn,
-                    hero.materials_per_turn,
-                    hero.compute_per_turn,
-                    0,
-                );
-                p0.hero_count += 1;
-                if hero.symbol != SystemType::None {
-                    grant_symbol(ref p0, hero.symbol);
-                    resolve_system_progress(ref game, ref p0, ref pending, 0);
-                }
+                invoke_hero_for_player(ref game, ref p0, ref pending, 0, @hero);
             } else {
-                let surcharge: u16 = (p1.hero_count * 2).into();
-                assert(
-                    can_afford(
-                        @p1, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge,
-                    ),
-                    'cannot afford',
-                );
-
-                pay_cost(
-                    ref p1, hero.energy_cost, hero.materials_cost, hero.compute_cost, surcharge,
-                );
-                apply_common_effects(
-                    ref game,
-                    ref p1,
-                    1,
-                    hero.agi,
-                    hero.escalation,
-                    hero.capital,
-                    hero.energy_per_turn,
-                    hero.materials_per_turn,
-                    hero.compute_per_turn,
-                    0,
-                );
-                p1.hero_count += 1;
-                if hero.symbol != SystemType::None {
-                    grant_symbol(ref p1, hero.symbol);
-                    resolve_system_progress(ref game, ref p1, ref pending, 1);
-                }
+                invoke_hero_for_player(ref game, ref p1, ref pending, 1, @hero);
             }
 
-            set_hero_slot_taken(ref hero_pool, hero_slot);
+            hero_pool.take_slot(hero_slot);
 
             if game.phase != GamePhase::GameOver && !pending.active {
                 let mut pyramid_mut = pyramid;
@@ -465,22 +275,17 @@ pub mod actions {
             assert(pending.active, 'no pending');
             assert(is_current_player(caller, @game, @p0, @p1), 'not your turn');
             assert(pending.player_index == game.current_player, 'wrong player');
-            assert(option_contains(@pending, symbol), 'invalid option');
+            assert(pending.contains_option(symbol), 'invalid option');
 
             if game.current_player == 0 {
-                apply_system_bonus(ref p0, symbol);
+                p0.apply_system_bonus(symbol);
                 p0.made_system_choice = true;
             } else {
-                apply_system_bonus(ref p1, symbol);
+                p1.apply_system_bonus(symbol);
                 p1.made_system_choice = true;
             }
 
-            pending.active = false;
-            pending.option_count = 0;
-            pending.option_0 = SystemType::None;
-            pending.option_1 = SystemType::None;
-            pending.option_2 = SystemType::None;
-            pending.option_3 = SystemType::None;
+            pending.clear();
 
             if game.phase != GamePhase::GameOver {
                 next_turn(ref game, ref p0, ref p1, ref pyramid);
@@ -508,18 +313,14 @@ pub mod actions {
             assert(!pending.active, 'pending choice');
 
             game.age += 1;
-            game.current_player = if game.current_player == 0 {
-                1
-            } else {
-                0
-            };
+            game.swap_player();
             game.phase = GamePhase::Drafting;
             game
                 .seed =
                     poseidon_hash_span(array![game.seed, game.age.into(), game_id.into()].span());
 
             let shuffled = deal_age_cards(game.seed, game.age);
-            let pyramid = pyramid_from_cards(game_id, shuffled);
+            let pyramid = PyramidTrait::from_cards(game_id, shuffled);
 
             let (hero_ids, new_mask) = select_n(
                 poseidon_hash_span(array![game.seed, 777].span()),
@@ -562,57 +363,6 @@ pub mod actions {
         reduced.try_into().unwrap()
     }
 
-    fn bit_for_card(card_id: u8) -> u32 {
-        let mut bit = 1_u32;
-        let mut i: u8 = 0;
-        loop {
-            if i == card_id {
-                break;
-            }
-            bit *= 2;
-            i += 1;
-        }
-        bit
-    }
-
-    fn bit_for_position(position: u8) -> u16 {
-        match position {
-            0 => 0x001,
-            1 => 0x002,
-            2 => 0x004,
-            3 => 0x008,
-            4 => 0x010,
-            5 => 0x020,
-            6 => 0x040,
-            7 => 0x080,
-            8 => 0x100,
-            9 => 0x200,
-            _ => 0,
-        }
-    }
-
-    fn validate_position(position: u8, taken_mask: u16) {
-        assert(position < 10, 'invalid pos');
-        assert((taken_mask & bit_for_position(position)) == 0, 'already taken');
-        assert(pyramid_logic::is_available(position, taken_mask), 'card blocked');
-    }
-
-    fn get_slot(pyramid: @Pyramid, position: u8) -> u8 {
-        match position {
-            0 => *pyramid.slot_0,
-            1 => *pyramid.slot_1,
-            2 => *pyramid.slot_2,
-            3 => *pyramid.slot_3,
-            4 => *pyramid.slot_4,
-            5 => *pyramid.slot_5,
-            6 => *pyramid.slot_6,
-            7 => *pyramid.slot_7,
-            8 => *pyramid.slot_8,
-            9 => *pyramid.slot_9,
-            _ => panic!("invalid pos"),
-        }
-    }
-
     fn is_current_player(
         caller: ContractAddress, game: @Game, p0: @PlayerState, p1: @PlayerState,
     ) -> bool {
@@ -623,198 +373,78 @@ pub mod actions {
         }
     }
 
-    fn chain_is_active(player: @PlayerState, chain_from: u8) -> bool {
-        if chain_from == 255 {
-            return false;
-        }
-
-        (*player.played_cards & bit_for_card(chain_from)) != 0
-    }
-
-    fn can_afford(
-        player: @PlayerState,
-        energy_cost: u8,
-        materials_cost: u8,
-        compute_cost: u8,
-        extra_capital: u16,
-    ) -> bool {
-        let e_need: u16 = if energy_cost > *player.energy_prod {
-            (energy_cost - *player.energy_prod).into()
-        } else {
-            0
-        };
-        let m_need: u16 = if materials_cost > *player.materials_prod {
-            (materials_cost - *player.materials_prod).into()
-        } else {
-            0
-        };
-        let c_need: u16 = if compute_cost > *player.compute_prod {
-            (compute_cost - *player.compute_prod).into()
-        } else {
-            0
-        };
-
-        *player.capital >= e_need + m_need + c_need + extra_capital
-    }
-
-    fn pay_cost(
-        ref player: PlayerState,
-        energy_cost: u8,
-        materials_cost: u8,
-        compute_cost: u8,
-        extra_capital: u16,
-    ) {
-        let e_need: u16 = if energy_cost > player.energy_prod {
-            (energy_cost - player.energy_prod).into()
-        } else {
-            0
-        };
-        let m_need: u16 = if materials_cost > player.materials_prod {
-            (materials_cost - player.materials_prod).into()
-        } else {
-            0
-        };
-        let c_need: u16 = if compute_cost > player.compute_prod {
-            (compute_cost - player.compute_prod).into()
-        } else {
-            0
-        };
-
-        player.capital -= e_need + m_need + c_need + extra_capital;
-    }
-
-    fn clamp(value: u8, min: u8, max: u8) -> u8 {
-        if value < min {
-            min
-        } else if value > max {
-            max
-        } else {
-            value
-        }
-    }
-
-    fn apply_common_effects(
+    fn play_card_for_player(
         ref game: Game,
         ref player: PlayerState,
-        current_player: u8,
-        agi_delta: u8,
-        escalation_delta: u8,
-        capital_delta: u8,
-        energy_delta: u8,
-        materials_delta: u8,
-        compute_delta: u8,
-        capital_per_turn_delta: u8,
+        ref pending: PendingChoice,
+        player_index: u8,
+        card: @CardData,
     ) {
-        player.capital += capital_delta.into();
-        player.capital += capital_per_turn_delta.into();
-        player.energy_prod += energy_delta;
-        player.materials_prod += materials_delta;
-        player.compute_prod += compute_delta;
+        let chain_active = player.chain_is_active(*card.chain_from);
+        let (e, m, c) = if chain_active {
+            (0_u8, 0_u8, 0_u8)
+        } else {
+            (*card.energy_cost, *card.materials_cost, *card.compute_cost)
+        };
 
-        if agi_delta > 0 {
-            if current_player == 0 {
-                game.agi_one = clamp(game.agi_one + agi_delta, 0, 6);
-                if game.agi_one == 6 {
-                    end_game(ref game, 1, WinCondition::AgiBreakthrough);
-                }
-            } else {
-                game.agi_two = clamp(game.agi_two + agi_delta, 0, 6);
-                if game.agi_two == 6 {
-                    end_game(ref game, 2, WinCondition::AgiBreakthrough);
-                }
-            }
-        }
+        assert(player.can_afford(e, m, c, 0), 'cannot afford');
+        player.pay_cost(e, m, c, 0);
+        player
+            .apply_economy(
+                *card.capital,
+                *card.energy_per_turn,
+                *card.materials_per_turn,
+                *card.compute_per_turn,
+                *card.capital_per_turn,
+            );
+        game.apply_agi(player_index, *card.agi);
+        game.apply_escalation(player_index, *card.escalation);
+        player.mark_card_played(*card.id);
 
-        if game.phase != GamePhase::GameOver && escalation_delta > 0 {
-            if current_player == 0 {
-                game.escalation = clamp(game.escalation + escalation_delta, 0, 12);
-                if game.escalation == 12 {
-                    end_game(ref game, 1, WinCondition::EscalationDominance);
-                }
-            } else {
-                let stepped = if escalation_delta > game.escalation {
-                    0
-                } else {
-                    game.escalation - escalation_delta
-                };
-                game.escalation = clamp(stepped, 0, 12);
-                if game.escalation == 0 {
-                    end_game(ref game, 2, WinCondition::EscalationDominance);
-                }
-            }
+        if *card.symbol != SystemType::None {
+            player.grant_symbol(*card.symbol);
+            resolve_system_progress(ref game, ref player, ref pending, player_index);
         }
     }
 
-    fn end_game(ref game: Game, winner: u8, condition: WinCondition) {
-        game.phase = GamePhase::GameOver;
-        game.winner = winner;
-        game.win_condition = condition;
-    }
+    fn invoke_hero_for_player(
+        ref game: Game,
+        ref player: PlayerState,
+        ref pending: PendingChoice,
+        player_index: u8,
+        hero: @HeroData,
+    ) {
+        let surcharge: u16 = (player.hero_count * 2).into();
+        assert(
+            player
+                .can_afford(*hero.energy_cost, *hero.materials_cost, *hero.compute_cost, surcharge),
+            'cannot afford',
+        );
+        player.pay_cost(*hero.energy_cost, *hero.materials_cost, *hero.compute_cost, surcharge);
+        player
+            .apply_economy(
+                *hero.capital,
+                *hero.energy_per_turn,
+                *hero.materials_per_turn,
+                *hero.compute_per_turn,
+                0,
+            );
+        game.apply_agi(player_index, *hero.agi);
+        game.apply_escalation(player_index, *hero.escalation);
+        player.hero_count += 1;
 
-    fn grant_symbol(ref player: PlayerState, symbol: SystemType) {
-        match symbol {
-            SystemType::Compute => player.compute_count += 1,
-            SystemType::Finance => player.finance_count += 1,
-            SystemType::Cyber => player.cyber_count += 1,
-            SystemType::Diplomacy => player.diplomacy_count += 1,
-            SystemType::None => {},
-        }
-    }
-
-    fn apply_system_bonus(ref player: PlayerState, symbol: SystemType) {
-        match symbol {
-            SystemType::Compute => {
-                if !player.compute_bonus {
-                    player.compute_prod += 2;
-                    player.compute_bonus = true;
-                }
-            },
-            SystemType::Finance => { player.finance_bonus = true; },
-            SystemType::Cyber => {
-                if !player.cyber_bonus {
-                    player.energy_prod += 2;
-                    player.cyber_bonus = true;
-                }
-            },
-            SystemType::Diplomacy => {
-                if !player.diplomacy_bonus {
-                    player.materials_prod += 2;
-                    player.diplomacy_bonus = true;
-                }
-            },
-            SystemType::None => {},
+        if *hero.symbol != SystemType::None {
+            player.grant_symbol(*hero.symbol);
+            resolve_system_progress(ref game, ref player, ref pending, player_index);
         }
     }
 
     fn resolve_system_progress(
         ref game: Game, ref player: PlayerState, ref pending: PendingChoice, player_index: u8,
     ) {
-        if player.compute_count >= 2 {
-            apply_system_bonus(ref player, SystemType::Compute);
-        }
-        if player.finance_count >= 2 {
-            apply_system_bonus(ref player, SystemType::Finance);
-        }
-        if player.cyber_count >= 2 {
-            apply_system_bonus(ref player, SystemType::Cyber);
-        }
-        if player.diplomacy_count >= 2 {
-            apply_system_bonus(ref player, SystemType::Diplomacy);
-        }
+        player.resolve_pair_bonuses();
 
-        let mut unique: u8 = 0;
-        if player.compute_count > 0 {
-            unique += 1;
-        }
-        if player.finance_count > 0 {
-            unique += 1;
-        }
-        if player.cyber_count > 0 {
-            unique += 1;
-        }
-        if player.diplomacy_count > 0 {
-            unique += 1;
-        }
+        let unique = player.unique_systems();
 
         if unique == 4 {
             let winner = if player_index == 0 {
@@ -822,69 +452,30 @@ pub mod actions {
             } else {
                 2
             };
-            end_game(ref game, winner, WinCondition::SystemsDominance);
+            game.end_game(winner, WinCondition::SystemsDominance);
             pending.active = false;
             return;
         }
 
         if unique == 3 && !player.made_system_choice {
-            pending.active = true;
-            pending.player_index = player_index;
-            pending.option_count = 0;
-            pending.option_0 = SystemType::None;
-            pending.option_1 = SystemType::None;
-            pending.option_2 = SystemType::None;
-            pending.option_3 = SystemType::None;
-
+            pending.activate(player_index);
             if player.compute_count > 0 {
-                set_option(ref pending, SystemType::Compute);
+                pending.add_option(SystemType::Compute);
             }
             if player.finance_count > 0 {
-                set_option(ref pending, SystemType::Finance);
+                pending.add_option(SystemType::Finance);
             }
             if player.cyber_count > 0 {
-                set_option(ref pending, SystemType::Cyber);
+                pending.add_option(SystemType::Cyber);
             }
             if player.diplomacy_count > 0 {
-                set_option(ref pending, SystemType::Diplomacy);
+                pending.add_option(SystemType::Diplomacy);
             }
         }
-    }
-
-    fn set_option(ref pending: PendingChoice, symbol: SystemType) {
-        match pending.option_count {
-            0 => pending.option_0 = symbol,
-            1 => pending.option_1 = symbol,
-            2 => pending.option_2 = symbol,
-            3 => pending.option_3 = symbol,
-            _ => {},
-        }
-        pending.option_count += 1;
-    }
-
-    fn option_contains(pending: @PendingChoice, symbol: SystemType) -> bool {
-        if symbol == SystemType::None {
-            return false;
-        }
-
-        let count = *pending.option_count;
-        if count > 0 && *pending.option_0 == symbol {
-            return true;
-        }
-        if count > 1 && *pending.option_1 == symbol {
-            return true;
-        }
-        if count > 2 && *pending.option_2 == symbol {
-            return true;
-        }
-        if count > 3 && *pending.option_3 == symbol {
-            return true;
-        }
-        false
     }
 
     fn next_turn(ref game: Game, ref p0: PlayerState, ref p1: PlayerState, ref pyramid: Pyramid) {
-        if pyramid_logic::all_taken(pyramid.taken_mask) {
+        if pyramid.all_taken() {
             if game.age == 3 {
                 resolve_points_end(ref game, @p0, @p1);
             } else {
@@ -893,59 +484,25 @@ pub mod actions {
             return;
         }
 
-        game.current_player = if game.current_player == 0 {
-            1
-        } else {
-            0
-        };
+        game.swap_player();
 
         if game.current_player == 0 {
-            let income: u16 = p0.energy_prod.into()
-                + p0.materials_prod.into()
-                + p0.compute_prod.into();
-            p0.capital += income;
-            if p0.finance_bonus {
-                p0.capital += 3;
-            }
+            p0.collect_income();
         } else {
-            let income: u16 = p1.energy_prod.into()
-                + p1.materials_prod.into()
-                + p1.compute_prod.into();
-            p1.capital += income;
-            if p1.finance_bonus {
-                p1.capital += 3;
-            }
+            p1.collect_income();
         }
     }
 
     fn resolve_points_end(ref game: Game, p0: @PlayerState, p1: @PlayerState) {
-        let p0_score: u16 = score_player(p0, game.agi_one);
-        let p1_score: u16 = score_player(p1, game.agi_two);
+        let p0_score = p0.score(game.agi_one);
+        let p1_score = p1.score(game.agi_two);
         if p0_score > p1_score {
-            end_game(ref game, 1, WinCondition::Points);
+            game.end_game(1, WinCondition::Points);
         } else if p1_score > p0_score {
-            end_game(ref game, 2, WinCondition::Points);
+            game.end_game(2, WinCondition::Points);
         } else {
-            end_game(ref game, 3, WinCondition::Points);
+            game.end_game(3, WinCondition::Points);
         }
-    }
-
-    fn score_player(player: @PlayerState, agi: u8) -> u16 {
-        let mut systems: u16 = 0;
-        if *player.compute_count > 0 {
-            systems += 1;
-        }
-        if *player.finance_count > 0 {
-            systems += 1;
-        }
-        if *player.cyber_count > 0 {
-            systems += 1;
-        }
-        if *player.diplomacy_count > 0 {
-            systems += 1;
-        }
-
-        agi.into() + systems + (*player.hero_count).into()
     }
 
     fn deal_age_cards(seed: felt252, age: u8) -> Array<u8> {
@@ -961,49 +518,5 @@ pub mod actions {
         }
 
         shuffle_with_seed(seed, cards)
-    }
-
-    fn pyramid_from_cards(game_id: u32, cards: Array<u8>) -> Pyramid {
-        Pyramid {
-            game_id,
-            slot_0: *cards.at(0),
-            slot_1: *cards.at(1),
-            slot_2: *cards.at(2),
-            slot_3: *cards.at(3),
-            slot_4: *cards.at(4),
-            slot_5: *cards.at(5),
-            slot_6: *cards.at(6),
-            slot_7: *cards.at(7),
-            slot_8: *cards.at(8),
-            slot_9: *cards.at(9),
-            taken_mask: 0,
-        }
-    }
-
-    fn get_hero_slot(pool: @HeroPool, hero_slot: u8) -> u8 {
-        match hero_slot {
-            0 => *pool.hero_0,
-            1 => *pool.hero_1,
-            2 => *pool.hero_2,
-            _ => panic!("invalid hero"),
-        }
-    }
-
-    fn is_hero_slot_taken(pool: @HeroPool, hero_slot: u8) -> bool {
-        match hero_slot {
-            0 => *pool.hero_0_taken,
-            1 => *pool.hero_1_taken,
-            2 => *pool.hero_2_taken,
-            _ => true,
-        }
-    }
-
-    fn set_hero_slot_taken(ref pool: HeroPool, hero_slot: u8) {
-        match hero_slot {
-            0 => pool.hero_0_taken = true,
-            1 => pool.hero_1_taken = true,
-            2 => pool.hero_2_taken = true,
-            _ => panic!("invalid hero"),
-        }
     }
 }

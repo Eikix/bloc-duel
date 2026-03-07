@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use bloc_duel::pyramid::{all_taken, is_available, mark_taken};
+    use bloc_duel::models::pyramid::{all_taken, is_available, mark_taken};
 
     #[test]
     fn test_bottom_row_is_always_available() {

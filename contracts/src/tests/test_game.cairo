@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use bloc_duel::models::{
-        Game, GamePhase, HeroPool, PendingChoice, PlayerState, Pyramid, SystemType, WinCondition,
-        m_Game, m_HeroPool, m_PendingChoice, m_PlayerState, m_Pyramid,
-    };
+    use bloc_duel::models::game::{Game, m_Game};
+    use bloc_duel::models::hero_pool::{HeroPool, m_HeroPool};
+    use bloc_duel::models::pending_choice::{PendingChoice, m_PendingChoice};
+    use bloc_duel::models::player_state::{PlayerState, PlayerStateTrait, m_PlayerState};
+    use bloc_duel::models::pyramid::{Pyramid, m_Pyramid};
     use bloc_duel::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait, actions};
+    use bloc_duel::types::{GamePhase, SystemType, WinCondition};
     use dojo::model::{ModelStorage, ModelStorageTest};
     use dojo::world::{WorldStorageTrait, world};
     use dojo_cairo_test::{
@@ -474,36 +476,8 @@ mod tests {
         let p0_after: PlayerState = world.read_model((game_id, 0_u8));
         let p1_after: PlayerState = world.read_model((game_id, 1_u8));
 
-        let mut p0_systems: u16 = 0;
-        if p0_after.compute_count > 0 {
-            p0_systems += 1;
-        }
-        if p0_after.finance_count > 0 {
-            p0_systems += 1;
-        }
-        if p0_after.cyber_count > 0 {
-            p0_systems += 1;
-        }
-        if p0_after.diplomacy_count > 0 {
-            p0_systems += 1;
-        }
-
-        let mut p1_systems: u16 = 0;
-        if p1_after.compute_count > 0 {
-            p1_systems += 1;
-        }
-        if p1_after.finance_count > 0 {
-            p1_systems += 1;
-        }
-        if p1_after.cyber_count > 0 {
-            p1_systems += 1;
-        }
-        if p1_after.diplomacy_count > 0 {
-            p1_systems += 1;
-        }
-
-        let p0_score: u16 = game_after.agi_one.into() + p0_systems + p0_after.hero_count.into();
-        let p1_score: u16 = game_after.agi_two.into() + p1_systems + p1_after.hero_count.into();
+        let p0_score: u16 = p0_after.score(game_after.agi_one);
+        let p1_score: u16 = p1_after.score(game_after.agi_two);
 
         assert(game_after.phase == GamePhase::GameOver, 'game over');
         assert(game_after.win_condition == WinCondition::Points, 'points win');
