@@ -45,6 +45,7 @@ interface GameState {
   heroPickerOpen: boolean
   usedHeroIds: string[]
   systemBonusChoice: { playerIndex: 0 | 1; options: SystemSymbol[] } | null
+  bonusNotification: { playerName: string; symbol: SystemSymbol } | null
 
   // Actions
   initGame: () => void
@@ -126,8 +127,20 @@ function payCost(player: Player, cost: ResourceCost, extraCapital: number = 0): 
   player.capital -= (eNeed + mNeed + cNeed + extraCapital)
 }
 
-export function getSellValue(age: 1 | 2 | 3): number {
-  return age
+export function getEffectiveCost(card: Card, player: Player): ResourceCost {
+  if (card.type === 'AI' && player.activeSystemBonuses.includes('COMPUTE')) {
+    return {
+      energy: Math.max(0, (card.cost.energy ?? 0) - 1) || undefined,
+      materials: Math.max(0, (card.cost.materials ?? 0) - 1) || undefined,
+      compute: Math.max(0, (card.cost.compute ?? 0) - 1) || undefined,
+    }
+  }
+  return card.cost
+}
+
+export function getSellValue(age: 1 | 2 | 3, player: Player): number {
+  const base = age
+  return player.activeSystemBonuses.includes('FINANCE') ? base * 2 : base
 }
 
 function cardsForAge(age: 1 | 2 | 3): Card[] {
@@ -195,17 +208,29 @@ function checkSystemState(player: Player): {
   return { newPairBonuses, offerChoice: null, instantWin: false }
 }
 
-/** Apply a system bonus to a player (mutates in place). */
-function applySystemBonus(player: Player, symbol: SystemSymbol): void {
+/** Apply a system bonus to a player. CYBER/DIPLOMACY mutate escalation. */
+function applySystemBonus(
+  player: Player,
+  symbol: SystemSymbol,
+  currentPlayer: 0 | 1,
+  escalationTrack: number,
+): { escalationTrack: number; phase: GamePhase | null } {
   player.activeSystemBonuses.push(symbol)
-  if (symbol === 'COMPUTE') {
-    player.production.compute += 2
-  } else if (symbol === 'CYBER') {
-    player.production.energy += 2
-  } else if (symbol === 'DIPLOMACY') {
-    player.production.materials += 2
+
+  if (symbol === 'CYBER') {
+    let esc = escalationTrack
+    if (currentPlayer === 0) esc = clamp(esc + 2, -6, 6)
+    else esc = clamp(esc - 2, -6, 6)
+    const phase = (esc === 6 || esc === -6) ? 'GAME_OVER' : null
+    return { escalationTrack: esc, phase }
   }
-  // FINANCE: +3 capital/turn, handled in nextTurn
+
+  if (symbol === 'DIPLOMACY') {
+    return { escalationTrack: 0, phase: null }
+  }
+
+  // COMPUTE and FINANCE: no immediate effect (permanent modifiers)
+  return { escalationTrack, phase: null }
 }
 
 // ---------------------------------------------------------------------------
@@ -225,6 +250,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   heroPickerOpen: false,
   usedHeroIds: [],
   systemBonusChoice: null,
+  bonusNotification: null,
 
   // ---- initGame -----------------------------------------------------------
   initGame: () => {
@@ -245,6 +271,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       heroPickerOpen: false,
       usedHeroIds: [],
       systemBonusChoice: null,
+      bonusNotification: null,
     })
   },
 
@@ -292,7 +319,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       ? player.playedCards.includes(card.chainFrom)
       : false
 
-    const cost = isFreeViaChain ? {} : card.cost
+    const effectiveCost = getEffectiveCost(card, player)
+    const cost = isFreeViaChain ? {} : effectiveCost
     if (!isFreeViaChain && !canAfford(player, cost)) return
 
     const newPlayers = clonePlayers(state.players)
@@ -339,13 +367,17 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Check system bonuses if a system symbol was gained
     let systemBonusChoice: GameState['systemBonusChoice'] = null
+    let bonusNotification: GameState['bonusNotification'] = null
     if (newPhase !== 'GAME_OVER' && (effect.symbol || card.symbol)) {
       const systemCheck = checkSystemState(p)
       if (systemCheck.instantWin) {
         newPhase = 'GAME_OVER'
       } else {
         for (const bonus of systemCheck.newPairBonuses) {
-          applySystemBonus(p, bonus)
+          const result = applySystemBonus(p, bonus, state.currentPlayer, newEscalation)
+          newEscalation = result.escalationTrack
+          if (result.phase) newPhase = result.phase
+          bonusNotification = { playerName: p.name, symbol: bonus }
         }
         if (systemCheck.offerChoice) {
           systemBonusChoice = {
@@ -364,6 +396,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       phase: newPhase,
       selectedCard: null,
       systemBonusChoice,
+      bonusNotification,
     })
 
     if (newPhase !== 'GAME_OVER' && !systemBonusChoice) get().nextTurn()
@@ -381,7 +414,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!isAvailable(position, state.pyramid)) return
 
     const newPlayers = clonePlayers(state.players)
-    newPlayers[state.currentPlayer].capital += state.age
+    newPlayers[state.currentPlayer].capital += getSellValue(state.age, newPlayers[state.currentPlayer])
 
     const newPyramid = state.pyramid.map((n, i) =>
       i === nodeIndex ? { ...n, taken: true } : n,
@@ -442,13 +475,17 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Check system bonuses if hero granted a symbol
     let systemBonusChoice: GameState['systemBonusChoice'] = null
+    let bonusNotification: GameState['bonusNotification'] = null
     if (newPhase !== 'GAME_OVER' && eff.symbol) {
       const systemCheck = checkSystemState(p)
       if (systemCheck.instantWin) {
         newPhase = 'GAME_OVER'
       } else {
         for (const bonus of systemCheck.newPairBonuses) {
-          applySystemBonus(p, bonus)
+          const result = applySystemBonus(p, bonus, currentPlayer, newEscalation)
+          newEscalation = result.escalationTrack
+          if (result.phase) newPhase = result.phase
+          bonusNotification = { playerName: p.name, symbol: bonus }
         }
         if (systemCheck.offerChoice) {
           systemBonusChoice = {
@@ -469,6 +506,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       heroPickerOpen: false,
       selectedCard: null,
       systemBonusChoice,
+      bonusNotification,
     })
 
     if (newPhase !== 'GAME_OVER' && !systemBonusChoice) get().nextTurn()
@@ -488,15 +526,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     const newPlayers = clonePlayers(state.players)
     const p = newPlayers[playerIndex]
 
-    applySystemBonus(p, symbol)
+    const result = applySystemBonus(p, symbol, playerIndex, state.escalationTrack)
     p.madeSystemChoice = true
 
     set({
       players: newPlayers,
+      escalationTrack: result.escalationTrack,
+      phase: result.phase ?? state.phase,
       systemBonusChoice: null,
     })
 
-    get().nextTurn()
+    if (!result.phase) get().nextTurn()
   },
 
   // ---- nextTurn -----------------------------------------------------------
@@ -519,15 +559,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const newPlayers = clonePlayers(state.players)
     const p = newPlayers[nextPlayer]
 
-    // Grant production income (includes COMPUTE/CYBER/DIPLOMACY bonus production)
+    // Grant production income
     const totalIncome = p.production.energy + p.production.materials + p.production.compute
     if (totalIncome > 0) {
       p.capital += totalIncome
-    }
-
-    // FINANCE bonus: +3 capital/turn
-    if (p.activeSystemBonuses.includes('FINANCE')) {
-      p.capital += 3
     }
 
     set({
@@ -545,9 +580,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     const cards = shuffle(cardsForAge(nextAge)).slice(0, 10)
     const pyramid = buildPyramid(cards)
 
-    // Draw 3 new heroes not already used
-    const remainingHeroes = HEROES.filter((h) => !state.usedHeroIds.includes(h.id))
-    const availableHeroes = shuffle(remainingHeroes).slice(0, 3)
+    // Recharge heroes back to 3: keep unpicked, draw from unused pool to fill
+    const remainingPool = HEROES.filter((h) => !state.usedHeroIds.includes(h.id) && !state.availableHeroes.some((a) => a.id === h.id))
+    const needed = 3 - state.availableHeroes.length
+    const newDraws = shuffle(remainingPool).slice(0, needed)
+    const availableHeroes = [...state.availableHeroes, ...newDraws]
 
     // Alternate first player
     const firstPlayer: 0 | 1 = state.currentPlayer === 0 ? 1 : 0

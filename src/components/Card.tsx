@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { RefObject } from 'react'
-import type { CardType, CardEffect } from '../game/cards'
+import type { CardType, CardEffect, ResourceCost } from '../game/cards'
 import type { SystemSymbol } from '../game/systems'
 import type { PyramidNode } from '../game/pyramid'
 import { formatCost, totalCost, RESOURCE_ICONS } from '../game/format'
@@ -17,6 +17,7 @@ interface CardProps {
   selected: boolean
   affordable: boolean
   isFreeViaChain: boolean
+  effectiveCost?: ResourceCost
   onSelect: (pos: number) => void
   dropRefs?: DropRefs
   onPlay?: (pos: number) => void
@@ -56,13 +57,14 @@ function isPointInRect(ref: RefObject<HTMLElement | null>, point: { x: number; y
 }
 
 export default function Card({
-  node, available, selected, affordable, isFreeViaChain,
+  node, available, selected, affordable, isFreeViaChain, effectiveCost,
   onSelect, dropRefs, onPlay, onDiscard, onDragOverZone,
 }: CardProps) {
   const { card, position } = node
   const style = TYPE_STYLES[card.type]
   const effects = formatEffects(card.effect, card.symbol)
-  const isFree = totalCost(card.cost) === 0
+  const displayCost = effectiveCost ?? card.cost
+  const isFree = totalCost(displayCost) === 0
   const [isDragging, setIsDragging] = useState(false)
   const [shaking, setShaking] = useState(false)
   const didDragRef = useRef(false)
@@ -139,7 +141,7 @@ export default function Card({
       <div className="flex items-center justify-between px-1.5 md:px-2 pt-1">
         {card.chainTo && <span className="text-[9px] md:text-[10px] text-violet-500">⛓</span>}
         <span className="ml-auto font-mono text-[9px] md:text-[10px] font-semibold text-ink-muted leading-none">
-          {isFree ? 'free' : formatCost(card.cost)}
+          {isFree ? 'free' : formatCost(displayCost)}
         </span>
       </div>
 
@@ -161,6 +163,13 @@ export default function Card({
       {isDragging && isFreeViaChain && (
         <div className="absolute -top-2 -right-2 rounded-full bg-green-500 px-1.5 py-0.5 font-mono text-[9px] font-bold text-white shadow-lg z-10">
           FREE
+        </div>
+      )}
+
+      {/* Lock overlay for blocked cards */}
+      {!available && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-lg opacity-60">🔒</span>
         </div>
       )}
     </motion.div>

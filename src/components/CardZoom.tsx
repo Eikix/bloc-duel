@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion'
-import type { Card, CardType } from '../game/cards'
+import type { Card, CardType, ResourceCost } from '../game/cards'
 import { formatCost, totalCost, RESOURCE_ICONS } from '../game/format'
 
 interface CardZoomProps {
   card: Card
   affordable: boolean
   isFreeViaChain: boolean
+  effectiveCost?: ResourceCost
   sellValue: number
   onPlay: () => void
   onDiscard: () => void
@@ -20,11 +21,12 @@ const TYPE_STYLES: Record<CardType, { stripe: string; bg: string; badge: string;
 }
 
 export default function CardZoom({
-  card, affordable, isFreeViaChain, sellValue,
+  card, affordable, isFreeViaChain, effectiveCost, sellValue,
   onPlay, onDiscard, onClose,
 }: CardZoomProps) {
   const style = TYPE_STYLES[card.type]
-  const isFree = totalCost(card.cost) === 0
+  const displayCost = effectiveCost ?? card.cost
+  const isFree = totalCost(displayCost) === 0
 
   const effects: { label: string; value: string }[] = []
   const e = card.effect
@@ -67,7 +69,7 @@ export default function CardZoom({
             <span className="font-mono text-sm font-bold text-ink-muted">
               {isFreeViaChain ? (
                 <span className="text-green-600">FREE</span>
-              ) : isFree ? 'free' : formatCost(card.cost)}
+              ) : isFree ? 'free' : formatCost(displayCost)}
             </span>
           </div>
 
