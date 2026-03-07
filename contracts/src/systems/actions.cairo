@@ -1,66 +1,57 @@
-use bloc_duel::models::{Direction, Position};
+use bloc_duel::models::{SystemType};
 
-// define the interface
+// ---------------------------------------------------------------------------
+// Actions interface — all game mutations go through here.
+// ---------------------------------------------------------------------------
+
 #[starknet::interface]
 pub trait IActions<T> {
-    fn spawn(ref self: T);
-    fn move(ref self: T, direction: Direction);
+    fn create_game(ref self: T) -> u32;
+    fn join_game(ref self: T, game_id: u32);
+    fn play_card(ref self: T, game_id: u32, position: u8);
+    fn discard_card(ref self: T, game_id: u32, position: u8);
+    fn invoke_hero(ref self: T, game_id: u32, hero_slot: u8);
+    fn choose_system_bonus(ref self: T, game_id: u32, symbol: SystemType);
+    fn next_age(ref self: T, game_id: u32);
 }
 
-// dojo decorator
 #[dojo::contract]
 pub mod actions {
-    use dojo::event::EventStorage;
+    #[allow(unused_imports)]
     use dojo::model::ModelStorage;
-    use bloc_duel::models::{Moves, Vec2};
+    #[allow(unused_imports)]
     use starknet::{ContractAddress, get_caller_address};
-    use super::{Direction, IActions, Position, next_position};
-
-    #[derive(Copy, Drop, Serde)]
-    #[dojo::event]
-    pub struct Moved {
-        #[key]
-        pub player: ContractAddress,
-        pub direction: Direction,
-    }
+    use super::{IActions, SystemType};
 
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
-        fn spawn(ref self: ContractState) {
-            let mut world = self.world_default();
-            let player = get_caller_address();
-            let position: Position = world.read_model(player);
-
-            let new_position = Position {
-                player, vec: Vec2 { x: position.vec.x + 10, y: position.vec.y + 10 },
-            };
-            world.write_model(@new_position);
-
-            let moves = Moves {
-                player, remaining: 100, last_direction: Option::None, can_move: true,
-            };
-            world.write_model(@moves);
+        fn create_game(ref self: ContractState) -> u32 {
+            // TODO: implement
+            0
         }
 
-        fn move(ref self: ContractState, direction: Direction) {
-            let mut world = self.world_default();
-            let player = get_caller_address();
+        fn join_game(ref self: ContractState, game_id: u32) {
+            // TODO: implement
+        }
 
-            let position: Position = world.read_model(player);
-            let mut moves: Moves = world.read_model(player);
+        fn play_card(ref self: ContractState, game_id: u32, position: u8) {
+            // TODO: implement
+        }
 
-            if !moves.can_move {
-                return;
-            }
+        fn discard_card(ref self: ContractState, game_id: u32, position: u8) {
+            // TODO: implement
+        }
 
-            moves.remaining -= 1;
-            moves.last_direction = Option::Some(direction);
+        fn invoke_hero(ref self: ContractState, game_id: u32, hero_slot: u8) {
+            // TODO: implement
+        }
 
-            let next = next_position(position, moves.last_direction);
+        fn choose_system_bonus(ref self: ContractState, game_id: u32, symbol: SystemType) {
+            // TODO: implement
+        }
 
-            world.write_model(@next);
-            world.write_model(@moves);
-            world.emit_event(@Moved { player, direction });
+        fn next_age(ref self: ContractState, game_id: u32) {
+            // TODO: implement
         }
     }
 
@@ -70,17 +61,4 @@ pub mod actions {
             self.world(@"bloc_duel")
         }
     }
-}
-
-fn next_position(mut position: Position, direction: Option<Direction>) -> Position {
-    match direction {
-        Option::None => { return position; },
-        Option::Some(d) => match d {
-            Direction::Left => { position.vec.x -= 1; },
-            Direction::Right => { position.vec.x += 1; },
-            Direction::Up => { position.vec.y -= 1; },
-            Direction::Down => { position.vec.y += 1; },
-        },
-    }
-    position
 }

@@ -56,7 +56,6 @@
             pkgs.openssl
           ]
           ++ lib.optionals (system == "x86_64-linux") [
-            pkgs.glibc
             pkgs.libgccjit
             pkgs.udev
           ]);

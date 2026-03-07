@@ -6,7 +6,10 @@ mod tests {
         ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait,
         spawn_test_world,
     };
-    use bloc_duel::models::{Direction, Moves, Position, m_Moves, m_Position};
+    use bloc_duel::models::{
+        Game, PlayerState, Pyramid, HeroPool, PendingChoice,
+        m_Game, m_PlayerState, m_Pyramid, m_HeroPool, m_PendingChoice,
+    };
     use bloc_duel::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait, actions};
     use starknet::ContractAddress;
 
@@ -14,9 +17,11 @@ mod tests {
         let ndef = NamespaceDef {
             namespace: "bloc_duel",
             resources: [
-                TestResource::Model(m_Position::TEST_CLASS_HASH),
-                TestResource::Model(m_Moves::TEST_CLASS_HASH),
-                TestResource::Event(actions::e_Moved::TEST_CLASS_HASH),
+                TestResource::Model(m_Game::TEST_CLASS_HASH),
+                TestResource::Model(m_PlayerState::TEST_CLASS_HASH),
+                TestResource::Model(m_Pyramid::TEST_CLASS_HASH),
+                TestResource::Model(m_HeroPool::TEST_CLASS_HASH),
+                TestResource::Model(m_PendingChoice::TEST_CLASS_HASH),
                 TestResource::Contract(actions::TEST_CLASS_HASH),
             ]
                 .span(),
@@ -34,59 +39,16 @@ mod tests {
     }
 
     #[test]
-    fn test_world_test_set() {
+    fn test_game_model_read_write() {
         let caller: ContractAddress = 0.try_into().unwrap();
         let ndef = namespace_def();
 
         let mut world = spawn_test_world(world::TEST_CLASS_HASH, [ndef].span());
         world.sync_perms_and_inits(contract_defs());
 
-        let mut position: Position = world.read_model(caller);
-        assert(position.vec.x == 0 && position.vec.y == 0, 'initial position wrong');
-
-        position.vec.x = 122;
-        position.vec.y = 88;
-
-        world.write_model_test(@position);
-
-        let mut position: Position = world.read_model(caller);
-        assert(position.vec.y == 88, 'write_value_from_id failed');
-
-        world.erase_model(@position);
-        let position: Position = world.read_model(caller);
-        assert(position.vec.x == 0 && position.vec.y == 0, 'erase_model failed');
-    }
-
-    #[test]
-    #[available_gas(30000000)]
-    fn test_move() {
-        let caller: ContractAddress = 0.try_into().unwrap();
-
-        let ndef = namespace_def();
-        let mut world = spawn_test_world(world::TEST_CLASS_HASH, [ndef].span());
-        world.sync_perms_and_inits(contract_defs());
-
-        let (contract_address, _) = world.dns(@"actions").unwrap();
-        let actions_system = IActionsDispatcher { contract_address };
-
-        actions_system.spawn();
-        let initial_moves: Moves = world.read_model(caller);
-        let initial_position: Position = world.read_model(caller);
-
-        assert(
-            initial_position.vec.x == 10 && initial_position.vec.y == 10, 'wrong initial position',
-        );
-
-        actions_system.move(Direction::Right.into());
-
-        let moves: Moves = world.read_model(caller);
-        let right_dir_felt: felt252 = Direction::Right.into();
-
-        assert(moves.remaining == initial_moves.remaining - 1, 'moves is wrong');
-        assert(moves.last_direction.unwrap().into() == right_dir_felt, 'last direction is wrong');
-
-        let new_position: Position = world.read_model(caller);
-        assert(new_position.vec.x == initial_position.vec.x + 1, 'position x is wrong');
-        assert(new_position.vec.y == initial_position.vec.y, 'position y is wrong');
+        // Verify default game state
+        let game: Game = world.read_model(1_u32);
+        assert(game.age == 0, 'default age should be 0');
+        assert(game.winner == 0, 'default winner should be 0');
     }
 }
