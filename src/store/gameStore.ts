@@ -153,6 +153,60 @@ function clonePlayers(players: [Player, Player]): [Player, Player] {
   return [clonePlayer(players[0]), clonePlayer(players[1])]
 }
 
+function getDraftNode(pyramid: PyramidNode[], position: number): { index: number; node: PyramidNode } | null {
+  const index = pyramid.findIndex((node) => node.position === position)
+  if (index === -1) return null
+  const node = pyramid[index]
+  if (node.taken || !isAvailable(position, pyramid)) return null
+  return { index, node }
+}
+
+function applyEffect(
+  player: Player,
+  playerIndex: 0 | 1,
+  agiTrack: [number, number],
+  escalationTrack: number,
+  phase: GamePhase,
+  effect: {
+    agi?: number
+    escalation?: number
+    capital?: number
+    energyPerTurn?: number
+    materialsPerTurn?: number
+    computePerTurn?: number
+    capitalPerTurn?: number
+    symbol?: SystemSymbol
+  },
+): { agiTrack: [number, number]; escalationTrack: number; phase: GamePhase } {
+  const nextAgiTrack: [number, number] = [...agiTrack]
+  let nextEscalationTrack = escalationTrack
+  let nextPhase = phase
+
+  if (effect.agi) {
+    nextAgiTrack[playerIndex] = clamp(nextAgiTrack[playerIndex] + effect.agi, 0, 6)
+    if (nextAgiTrack[playerIndex] >= 6) nextPhase = 'GAME_OVER'
+  }
+
+  if (effect.escalation) {
+    const delta = playerIndex === 0 ? effect.escalation : -effect.escalation
+    nextEscalationTrack = clamp(nextEscalationTrack + delta, -6, 6)
+    if (Math.abs(nextEscalationTrack) === 6) nextPhase = 'GAME_OVER'
+  }
+
+  if (effect.capital) player.capital += effect.capital
+  if (effect.energyPerTurn) player.production.energy += effect.energyPerTurn
+  if (effect.materialsPerTurn) player.production.materials += effect.materialsPerTurn
+  if (effect.computePerTurn) player.production.compute += effect.computePerTurn
+  if (effect.capitalPerTurn) player.capital += effect.capitalPerTurn
+  if (effect.symbol) player.systems.push(effect.symbol)
+
+  return {
+    agiTrack: nextAgiTrack,
+    escalationTrack: nextEscalationTrack,
+    phase: nextPhase,
+  }
+}
+
 // ---------------------------------------------------------------------------
 // System bonus helpers
 // ---------------------------------------------------------------------------
@@ -206,6 +260,32 @@ function applySystemBonus(player: Player, symbol: SystemSymbol): void {
     player.production.materials += 2
   }
   // FINANCE: +3 capital/turn, handled in nextTurn
+}
+
+function resolveSystemBonus(
+  player: Player,
+  playerIndex: 0 | 1,
+  phase: GamePhase,
+): { phase: GamePhase; systemBonusChoice: GameState['systemBonusChoice'] } {
+  if (phase === 'GAME_OVER') {
+    return { phase, systemBonusChoice: null }
+  }
+
+  const systemCheck = checkSystemState(player)
+  if (systemCheck.instantWin) {
+    return { phase: 'GAME_OVER', systemBonusChoice: null }
+  }
+
+  for (const bonus of systemCheck.newPairBonuses) {
+    applySystemBonus(player, bonus)
+  }
+
+  return {
+    phase,
+    systemBonusChoice: systemCheck.offerChoice
+      ? { playerIndex, options: systemCheck.offerChoice }
+      : null,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -279,12 +359,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get()
     if (state.phase !== 'DRAFTING' || state.systemBonusChoice) return
 
-    const nodeIndex = state.pyramid.findIndex((n) => n.position === position)
-    if (nodeIndex === -1) return
-    const node = state.pyramid[nodeIndex]
-    if (node.taken) return
-    if (!isAvailable(position, state.pyramid)) return
+    const draftNode = getDraftNode(state.pyramid, position)
+    if (!draftNode) return
 
+    const { index: nodeIndex, node } = draftNode
     const card = node.card
     const player = state.players[state.currentPlayer]
 
@@ -292,74 +370,38 @@ export const useGameStore = create<GameState>((set, get) => ({
       ? player.playedCards.includes(card.chainFrom)
       : false
 
-    const cost = isFreeViaChain ? {} : card.cost
-    if (!isFreeViaChain && !canAfford(player, cost)) return
+    if (!isFreeViaChain && !canAfford(player, card.cost)) return
 
     const newPlayers = clonePlayers(state.players)
-    const newAgiTrack: [number, number] = [...state.agiTrack]
-    let newEscalation = state.escalationTrack
-    let newPhase: GamePhase = state.phase
-
     const p = newPlayers[state.currentPlayer]
 
     if (!isFreeViaChain) {
-      payCost(p, cost)
+      payCost(p, card.cost)
     }
 
     p.playedCards.push(card.id)
-
-    // Apply effects
-    const effect = card.effect
-
-    if (effect.agi) {
-      newAgiTrack[state.currentPlayer] = clamp(newAgiTrack[state.currentPlayer] + effect.agi, 0, 6)
-      if (newAgiTrack[state.currentPlayer] >= 6) newPhase = 'GAME_OVER'
-    }
-
-    if (effect.escalation) {
-      if (state.currentPlayer === 0) {
-        newEscalation = clamp(newEscalation + effect.escalation, -6, 6)
-      } else {
-        newEscalation = clamp(newEscalation - effect.escalation, -6, 6)
-      }
-      if (newEscalation === 6 || newEscalation === -6) newPhase = 'GAME_OVER'
-    }
-
-    if (effect.capital) p.capital += effect.capital
-    if (effect.energyPerTurn) p.production.energy += effect.energyPerTurn
-    if (effect.materialsPerTurn) p.production.materials += effect.materialsPerTurn
-    if (effect.computePerTurn) p.production.compute += effect.computePerTurn
-    if (effect.capitalPerTurn) p.capital += effect.capitalPerTurn
-    if (effect.symbol) p.systems.push(effect.symbol)
+    const effectResult = applyEffect(
+      p,
+      state.currentPlayer,
+      state.agiTrack,
+      state.escalationTrack,
+      state.phase,
+      card.effect,
+    )
     if (card.symbol) p.systems.push(card.symbol)
 
     const newPyramid = state.pyramid.map((n, i) =>
       i === nodeIndex ? { ...n, taken: true } : n,
     )
 
-    // Check system bonuses if a system symbol was gained
-    let systemBonusChoice: GameState['systemBonusChoice'] = null
-    if (newPhase !== 'GAME_OVER' && (effect.symbol || card.symbol)) {
-      const systemCheck = checkSystemState(p)
-      if (systemCheck.instantWin) {
-        newPhase = 'GAME_OVER'
-      } else {
-        for (const bonus of systemCheck.newPairBonuses) {
-          applySystemBonus(p, bonus)
-        }
-        if (systemCheck.offerChoice) {
-          systemBonusChoice = {
-            playerIndex: state.currentPlayer,
-            options: systemCheck.offerChoice,
-          }
-        }
-      }
-    }
+    const { phase: newPhase, systemBonusChoice } = effectResult.phase === 'GAME_OVER' || (!card.effect.symbol && !card.symbol)
+      ? { phase: effectResult.phase, systemBonusChoice: null }
+      : resolveSystemBonus(p, state.currentPlayer, effectResult.phase)
 
     set({
       players: newPlayers,
-      agiTrack: newAgiTrack,
-      escalationTrack: newEscalation,
+      agiTrack: effectResult.agiTrack,
+      escalationTrack: effectResult.escalationTrack,
       pyramid: newPyramid,
       phase: newPhase,
       selectedCard: null,
@@ -374,17 +416,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get()
     if (state.phase !== 'DRAFTING' || state.systemBonusChoice) return
 
-    const nodeIndex = state.pyramid.findIndex((n) => n.position === position)
-    if (nodeIndex === -1) return
-    const node = state.pyramid[nodeIndex]
-    if (node.taken) return
-    if (!isAvailable(position, state.pyramid)) return
+    const draftNode = getDraftNode(state.pyramid, position)
+    if (!draftNode) return
 
     const newPlayers = clonePlayers(state.players)
     newPlayers[state.currentPlayer].capital += state.age
 
     const newPyramid = state.pyramid.map((n, i) =>
-      i === nodeIndex ? { ...n, taken: true } : n,
+      i === draftNode.index ? { ...n, taken: true } : n,
     )
 
     set({
@@ -415,54 +454,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     payCost(p, hero.cost, surcharge)
     p.heroes.push({ ...hero })
-
-    // Apply hero effect
-    const eff = hero.effect
-    const newAgiTrack: [number, number] = [...state.agiTrack]
-    let newEscalation = state.escalationTrack
-    let newPhase: GamePhase = state.phase
-
-    if (eff.agi) {
-      newAgiTrack[currentPlayer] = clamp(newAgiTrack[currentPlayer] + eff.agi, 0, 6)
-      if (newAgiTrack[currentPlayer] >= 6) newPhase = 'GAME_OVER'
-    }
-    if (eff.escalation) {
-      if (currentPlayer === 0) {
-        newEscalation = clamp(newEscalation + eff.escalation, -6, 6)
-      } else {
-        newEscalation = clamp(newEscalation - eff.escalation, -6, 6)
-      }
-      if (newEscalation === 6 || newEscalation === -6) newPhase = 'GAME_OVER'
-    }
-    if (eff.capital) p.capital += eff.capital
-    if (eff.energyPerTurn) p.production.energy += eff.energyPerTurn
-    if (eff.materialsPerTurn) p.production.materials += eff.materialsPerTurn
-    if (eff.computePerTurn) p.production.compute += eff.computePerTurn
-    if (eff.symbol) p.systems.push(eff.symbol)
-
-    // Check system bonuses if hero granted a symbol
-    let systemBonusChoice: GameState['systemBonusChoice'] = null
-    if (newPhase !== 'GAME_OVER' && eff.symbol) {
-      const systemCheck = checkSystemState(p)
-      if (systemCheck.instantWin) {
-        newPhase = 'GAME_OVER'
-      } else {
-        for (const bonus of systemCheck.newPairBonuses) {
-          applySystemBonus(p, bonus)
-        }
-        if (systemCheck.offerChoice) {
-          systemBonusChoice = {
-            playerIndex: currentPlayer,
-            options: systemCheck.offerChoice,
-          }
-        }
-      }
-    }
+    const effectResult = applyEffect(
+      p,
+      currentPlayer,
+      state.agiTrack,
+      state.escalationTrack,
+      state.phase,
+      hero.effect,
+    )
+    const { phase: newPhase, systemBonusChoice } = hero.effect.symbol
+      ? resolveSystemBonus(p, currentPlayer, effectResult.phase)
+      : { phase: effectResult.phase, systemBonusChoice: null }
 
     set({
       players: newPlayers,
-      agiTrack: newAgiTrack,
-      escalationTrack: newEscalation,
+      agiTrack: effectResult.agiTrack,
+      escalationTrack: effectResult.escalationTrack,
       phase: newPhase,
       availableHeroes: availableHeroes.filter((h) => h.id !== heroId),
       usedHeroIds: [...state.usedHeroIds, heroId],
