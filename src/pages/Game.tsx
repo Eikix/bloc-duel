@@ -14,6 +14,28 @@ import SystemBonusChoice from '../components/SystemBonusChoice'
 
 const AGE_LABELS = { 1: 'I', 2: 'II', 3: 'III' } as const
 
+function getVictoryInfo(
+  players: ReturnType<typeof useGameStore.getState>['players'],
+  agiTrack: [number, number],
+  escalationTrack: number,
+) {
+  const p0unique = new Set(players[0].systems).size
+  const p1unique = new Set(players[1].systems).size
+  if (p0unique >= 4) return { winner: players[0].name, reason: 'Systems Dominance' }
+  if (p1unique >= 4) return { winner: players[1].name, reason: 'Systems Dominance' }
+  if (agiTrack[0] >= 6) return { winner: players[0].name, reason: 'AGI Breakthrough' }
+  if (agiTrack[1] >= 6) return { winner: players[1].name, reason: 'AGI Breakthrough' }
+  if (escalationTrack >= 6) return { winner: players[0].name, reason: 'Escalation Dominance' }
+  if (escalationTrack <= -6) return { winner: players[1].name, reason: 'Escalation Dominance' }
+
+  const score = (idx: 0 | 1) => agiTrack[idx] + players[idx].systems.length + players[idx].heroes.length
+  const s0 = score(0)
+  const s1 = score(1)
+  if (s0 > s1) return { winner: players[0].name, reason: `Points ${s0}-${s1}` }
+  if (s1 > s0) return { winner: players[1].name, reason: `Points ${s1}-${s0}` }
+  return { winner: 'Nobody', reason: `Tie ${s0}-${s1}` }
+}
+
 export function Game() {
   const {
     currentPlayer,
@@ -78,25 +100,7 @@ export function Game() {
     : false
 
   const sellValue = getSellValue(age, current)
-
-  // Determine winner for game over screen
-  const getVictoryInfo = () => {
-    // Systems Victory: all 4 unique system types
-    const p0unique = new Set(players[0].systems).size
-    const p1unique = new Set(players[1].systems).size
-    if (p0unique >= 4) return { winner: players[0].name, reason: 'Systems Dominance' }
-    if (p1unique >= 4) return { winner: players[1].name, reason: 'Systems Dominance' }
-    if (agiTrack[0] >= 6) return { winner: players[0].name, reason: 'AGI Breakthrough' }
-    if (agiTrack[1] >= 6) return { winner: players[1].name, reason: 'AGI Breakthrough' }
-    if (escalationTrack >= 6) return { winner: players[0].name, reason: 'Escalation Dominance' }
-    if (escalationTrack <= -6) return { winner: players[1].name, reason: 'Escalation Dominance' }
-    const score = (idx: 0 | 1) => agiTrack[idx] + players[idx].systems.length + players[idx].heroes.length
-    const s0 = score(0)
-    const s1 = score(1)
-    if (s0 > s1) return { winner: players[0].name, reason: `Points ${s0}-${s1}` }
-    if (s1 > s0) return { winner: players[1].name, reason: `Points ${s1}-${s0}` }
-    return { winner: 'Nobody', reason: `Tie ${s0}-${s1}` }
-  }
+  const victoryInfo = phase === 'GAME_OVER' ? getVictoryInfo(players, agiTrack, escalationTrack) : null
 
   return (
     <div className="md:h-screen md:overflow-hidden min-h-screen flex flex-col bg-surface">
@@ -258,9 +262,9 @@ export function Game() {
                 Game Over
               </h2>
               <p className="font-display text-lg font-bold text-ink mb-1">
-                {getVictoryInfo().winner} Wins!
+                {victoryInfo?.winner} Wins!
               </p>
-              <p className="text-sm text-ink-muted mb-6">{getVictoryInfo().reason}</p>
+              <p className="text-sm text-ink-muted mb-6">{victoryInfo?.reason}</p>
               <button
                 onClick={initGame}
                 className="rounded-xl bg-ink px-8 py-3 font-display text-sm font-bold text-white shadow-lg transition hover:bg-ink/80"
