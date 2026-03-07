@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import type { Card, CardType, ResourceCost } from '../game/cards'
+import { getCardById } from '../game/cards'
 import { formatCost, totalCost, RESOURCE_ICONS } from '../game/format'
 
 interface CardZoomProps {
@@ -27,6 +28,8 @@ export default function CardZoom({
   const style = TYPE_STYLES[card.type]
   const displayCost = effectiveCost ?? card.cost
   const isFree = totalCost(displayCost) === 0
+  const chainFromName = card.chainFrom !== undefined ? getCardById(card.chainFrom).name : null
+  const chainToName = card.chainTo !== undefined ? getCardById(card.chainTo).name : null
 
   const effects: { label: string; value: string }[] = []
   const e = card.effect
@@ -88,16 +91,16 @@ export default function CardZoom({
           </div>
 
           {/* Chain info */}
-          {(card.chainFrom || card.chainTo) && (
+          {(card.chainFrom !== undefined || card.chainTo !== undefined) && (
             <div className="rounded-lg bg-violet-50 border border-violet-200/60 px-2.5 py-1.5 mb-3">
-              {card.chainFrom && (
+              {chainFromName && (
                 <p className="font-mono text-[10px] text-violet-600">
-                  ⛓ Chains from: <span className="font-semibold">{card.chainFrom}</span>
+                  ⛓ Chains from: <span className="font-semibold">{chainFromName}</span>
                 </p>
               )}
-              {card.chainTo && (
+              {chainToName && (
                 <p className="font-mono text-[10px] text-violet-600">
-                  ⛓ Chains to: <span className="font-semibold">{card.chainTo}</span>
+                  ⛓ Chains to: <span className="font-semibold">{chainToName}</span>
                 </p>
               )}
             </div>

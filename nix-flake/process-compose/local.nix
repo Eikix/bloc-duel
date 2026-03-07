@@ -35,7 +35,7 @@
         katana = lib.mkIf common.isLinux {
           command = "${pkgs.writeShellScript "katana-start" ''
             echo "🏯 Starting Katana (Starknet devnet) on port 5050..."
-            ${common.cairoPkgs.katana}/bin/katana --dev --dev.no-fee
+            ${common.cairoPkgs.katana}/bin/katana --dev --dev.no-fee --http.cors_origins "*"
           ''}";
           readiness_probe = healthChecks.mkKatanaHealthCheck {};
         };
@@ -117,6 +117,9 @@
           };
           environment = {
             NODE_ENV = "development";
+            PUBLIC_NODE_URL = "http://127.0.0.1:5050";
+            PUBLIC_STARKNET_NETWORK = "katana";
+            PUBLIC_TORII_URL = "http://127.0.0.1:${toString common.ports.toriiPort}";
           };
         };
       };

@@ -9,7 +9,7 @@ export default function HeroPicker() {
   const invokeHero = useGameStore((s) => s.invokeHero)
   const toggle = useGameStore((s) => s.toggleHeroPicker)
 
-  const surcharge = current.heroes.length * 2
+  const surcharge = current.heroCount * 2
 
   return (
     <AnimatePresence>
@@ -50,12 +50,12 @@ export default function HeroPicker() {
                 const affordable = canAfford(current, hero.cost, surcharge)
                 return (
                   <motion.button
-                    key={hero.id}
+                     key={hero.slot}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.08 }}
                     disabled={!affordable}
-                    onClick={() => invokeHero(hero.id)}
+                    onClick={() => invokeHero(hero.slot)}
                     className={`
                       group relative w-52 rounded-2xl border-2 bg-surface-raised text-left
                       transition-all duration-200
