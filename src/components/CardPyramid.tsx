@@ -34,11 +34,13 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
 
   if (pyramid.length === 0) return null
 
+  const pyramidKey = pyramid.map((node) => `${node.position}:${node.card.id}`).join('|')
+
   return (
-    <div className="flex flex-col items-center py-2 md:py-4">
+    <div key={pyramidKey} className="flex flex-col items-center py-2 md:py-4">
       {ROWS.map((positions, rowIndex) => (
         <motion.div
-          key={rowIndex}
+          key={`${pyramidKey}-${rowIndex}`}
           className={`flex justify-center gap-1.5 sm:gap-2 md:gap-3 ${rowIndex > 0 ? ROW_OVERLAP : ''}`}
           style={{ zIndex: ROW_Z[rowIndex] }}
           initial={{ opacity: 0, y: 18 }}
@@ -53,7 +55,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
               if (node.taken) {
                 return (
                   <div
-                    key={`empty-${pos}`}
+                    key={`${pyramidKey}-empty-${pos}`}
                     className="relative h-28 w-[4.9rem] rounded-[18px] border border-dashed border-slate-300/80 bg-white/28 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] sm:h-[7rem] sm:w-[5.15rem] md:h-[7.35rem] md:w-[5.3rem] lg:h-[7.75rem] lg:w-[5.55rem] xl:h-[8.1rem] xl:w-[5.8rem]"
                   >
                     <div className="absolute inset-2 rounded-[14px] border border-white/40 bg-white/18" />
@@ -73,7 +75,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
 
               return (
                 <Card
-                  key={node.card.id}
+                  key={`${pyramidKey}-${node.card.id}`}
                   node={node}
                   available={avail}
                   selected={selected}
