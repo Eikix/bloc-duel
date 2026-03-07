@@ -45,6 +45,7 @@ interface GameState {
   heroPickerOpen: boolean
   usedHeroIds: string[]
   systemBonusChoice: { playerIndex: 0 | 1; options: SystemSymbol[] } | null
+  bonusNotification: { playerName: string; symbol: SystemSymbol } | null
 
   // Actions
   initGame: () => void
@@ -249,6 +250,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   heroPickerOpen: false,
   usedHeroIds: [],
   systemBonusChoice: null,
+  bonusNotification: null,
 
   // ---- initGame -----------------------------------------------------------
   initGame: () => {
@@ -269,6 +271,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       heroPickerOpen: false,
       usedHeroIds: [],
       systemBonusChoice: null,
+      bonusNotification: null,
     })
   },
 
@@ -364,6 +367,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Check system bonuses if a system symbol was gained
     let systemBonusChoice: GameState['systemBonusChoice'] = null
+    let bonusNotification: GameState['bonusNotification'] = null
     if (newPhase !== 'GAME_OVER' && (effect.symbol || card.symbol)) {
       const systemCheck = checkSystemState(p)
       if (systemCheck.instantWin) {
@@ -373,6 +377,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           const result = applySystemBonus(p, bonus, state.currentPlayer, newEscalation)
           newEscalation = result.escalationTrack
           if (result.phase) newPhase = result.phase
+          bonusNotification = { playerName: p.name, symbol: bonus }
         }
         if (systemCheck.offerChoice) {
           systemBonusChoice = {
@@ -391,6 +396,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       phase: newPhase,
       selectedCard: null,
       systemBonusChoice,
+      bonusNotification,
     })
 
     if (newPhase !== 'GAME_OVER' && !systemBonusChoice) get().nextTurn()
@@ -469,6 +475,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     // Check system bonuses if hero granted a symbol
     let systemBonusChoice: GameState['systemBonusChoice'] = null
+    let bonusNotification: GameState['bonusNotification'] = null
     if (newPhase !== 'GAME_OVER' && eff.symbol) {
       const systemCheck = checkSystemState(p)
       if (systemCheck.instantWin) {
@@ -478,6 +485,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           const result = applySystemBonus(p, bonus, currentPlayer, newEscalation)
           newEscalation = result.escalationTrack
           if (result.phase) newPhase = result.phase
+          bonusNotification = { playerName: p.name, symbol: bonus }
         }
         if (systemCheck.offerChoice) {
           systemBonusChoice = {
@@ -498,6 +506,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       heroPickerOpen: false,
       selectedCard: null,
       systemBonusChoice,
+      bonusNotification,
     })
 
     if (newPhase !== 'GAME_OVER' && !systemBonusChoice) get().nextTurn()

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGameStore, canAfford, getSellValue, getEffectiveCost } from '../store/gameStore'
+import { SYSTEM_BONUS_LABELS } from '../game/systems'
 import CardPyramid from '../components/CardPyramid'
 import AGITrack from '../components/AGITrack'
 import EscalationTrack from '../components/EscalationTrack'
@@ -31,11 +32,21 @@ export function Game() {
     nextAge,
     systemBonusChoice,
     chooseSystemBonus,
+    bonusNotification,
   } = useGameStore()
 
   useEffect(() => {
     initGame()
   }, [initGame])
+
+  // Auto-dismiss bonus notification after 2s
+  useEffect(() => {
+    if (!bonusNotification) return
+    const timer = setTimeout(() => {
+      useGameStore.setState({ bonusNotification: null })
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [bonusNotification])
 
   // Perspective: current player is always at bottom
   const bottomPlayer = currentPlayer
@@ -166,6 +177,25 @@ export function Game() {
             onDiscard={() => { discardCard(); }}
             onClose={() => useGameStore.getState().selectCard(selectedNode.position)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Bonus notification toast */}
+      <AnimatePresence>
+        {bonusNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-14 left-1/2 -translate-x-1/2 z-50 rounded-xl bg-surface-raised border border-yellow-400 shadow-lg px-4 py-2.5 text-center"
+          >
+            <p className="font-display text-sm font-bold text-ink">
+              {bonusNotification.playerName}
+            </p>
+            <p className="font-mono text-xs text-ink-muted">
+              {SYSTEM_BONUS_LABELS[bonusNotification.symbol]}
+            </p>
+          </motion.div>
         )}
       </AnimatePresence>
 

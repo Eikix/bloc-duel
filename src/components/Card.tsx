@@ -165,6 +165,13 @@ export default function Card({
           FREE
         </div>
       )}
+
+      {/* Lock overlay for blocked cards */}
+      {!available && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-lg opacity-60">🔒</span>
+        </div>
+      )}
     </motion.div>
   )
 }
