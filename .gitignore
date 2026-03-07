@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Nix
+result/
+.direnv/
+
+# Data
+.data/
+
+# Environment
+.env
+.env.local

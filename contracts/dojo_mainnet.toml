@@ -1,0 +1,17 @@
+[world]
+name = "BlocDuel"
+description = "BLOC:DUEL - Two-player strategy card game on Starknet"
+seed = "bloc_duel_mainnet"
+
+[namespace]
+default = "bloc_duel"
+
+[env]
+rpc_url = "https://api.cartridge.gg/x/starknet/mainnet"
+account_address = "0x0"  # Set before deploying
+private_key = "0x0"      # Set before deploying
+# world_address = "0x0"  # Set after first deployment
+# world_block = 0        # Set after first deployment
+
+[writers]
+"bloc_duel" = ["bloc_duel-actions"]

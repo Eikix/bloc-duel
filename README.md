@@ -2,12 +2,89 @@
 
 A two-player strategy card game set in a near-future geopolitical conflict. Draft cards from a shared pyramid, build your engine, and race to one of three victory conditions.
 
-## Play
+## Development
+
+Requires [Nix](https://nixos.org/) with flakes enabled. The dev environment provides all tools (Node.js, Katana, Torii, Sozo, Scarb).
+
+### Mode 1: Local Dev (Katana + Torii + Vite)
+
+Full local stack — spins up a local Starknet devnet, deploys contracts, starts the indexer, and runs the frontend.
+
+```bash
+nix run .#start
+```
+
+What it does:
+- Starts Katana devnet (port 5050)
+- Builds & migrates Dojo contracts to Katana
+- Starts Torii indexer (port 8080)
+- Installs npm deps if needed
+- Starts Vite dev server (port 5173)
+
+**When to use:** Day-to-day local development. No mainnet costs, fast iteration.
+
+### Mode 2: Mainnet + Local Torii
+
+Runs a local Torii instance indexing mainnet contracts. No Katana — reads from real Starknet.
+
+```bash
+nix run .#start-mainnet
+```
+
+What it does:
+- Validates `contracts/dojo_mainnet.toml` (world address, manifest)
+- Starts Torii indexing mainnet (port 8080)
+- Installs npm deps if needed
+- Starts Vite dev server (port 5173)
+
+**Prerequisites:** Deploy contracts to mainnet first, set `world_address` and `world_block` in `contracts/dojo_mainnet.toml`.
+
+**When to use:** Pre-production testing against real on-chain state.
+
+### Mode 3: Mainnet + Remote Torii
+
+Frontend only — connects to a remote Torii instance. Nothing local except the dev server.
+
+```bash
+nix run .#start-mainnet-torii
+```
+
+What it does:
+- Installs npm deps if needed
+- Starts Vite dev server (port 5173)
+
+**Prerequisites:** Set `PUBLIC_TORII_URL` env var pointing to your hosted Torii.
+
+**When to use:** Production-like setup, connecting to a hosted Torii indexer.
+
+### Mode Comparison
+
+| | Mode 1 (Local) | Mode 2 (Mainnet-Local) | Mode 3 (Remote Torii) |
+|---|---|---|---|
+| **Command** | `nix run .#start` | `nix run .#start-mainnet` | `nix run .#start-mainnet-torii` |
+| **Katana** | Local devnet | -- | -- |
+| **Torii** | Local | Local (indexing mainnet) | Remote |
+| **Blockchain** | Local Katana | Starknet Mainnet | Starknet Mainnet |
+| **Best for** | Development | Pre-production | Production |
+
+### Ports
+
+| Service | Port |
+|---|---|
+| Vite dev server | 5173 |
+| Katana (local Starknet) | 5050 |
+| Torii (indexer) | 8080 |
+
+Override with env vars: `BLOCDUEL_VITE_PORT`, `BLOCDUEL_TORII_PORT`, etc.
+
+### Without Nix
 
 ```bash
 npm install
 npm run dev
 ```
+
+This only starts the frontend — you'll need to run Katana/Torii/Sozo manually.
 
 ## How It Works
 
