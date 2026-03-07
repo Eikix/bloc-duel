@@ -33,3 +33,15 @@ result/
 # Environment
 .env
 .env.local
+
+# Agent / AI tooling
+.agents/
+.agent/
+skills/
+skills-lock.json
+
+# Dojo contracts build artifacts
+contracts/target/
+contracts/bindings/
+contracts/manifest_*.json
+!contracts/manifest_dev.json

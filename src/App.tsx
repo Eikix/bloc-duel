@@ -1,7 +1,15 @@
-import { Game } from './pages/Game'
+import { DojoProvider } from "./dojo/DojoContext";
+import { StarknetProvider } from "./dojo/StarknetProvider";
+import { Game } from "./pages/Game";
 
 function App() {
-  return <Game />
+  return (
+    <StarknetProvider>
+      <DojoProvider>
+        <Game />
+      </DojoProvider>
+    </StarknetProvider>
+  );
 }
 
-export default App
+export default App;

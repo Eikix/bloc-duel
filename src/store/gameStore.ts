@@ -1,566 +1,150 @@
-import { create } from 'zustand'
-import { AGE_1_CARDS, AGE_2_CARDS, AGE_3_CARDS } from '../game/cards'
-import type { Card, ResourceCost } from '../game/cards'
-import { HEROES } from '../game/heroes'
-import type { Hero } from '../game/heroes'
-import type { SystemSymbol } from '../game/systems'
-import { buildPyramid, isAvailable } from '../game/pyramid'
-import type { PyramidNode } from '../game/pyramid'
+import { create } from "zustand";
+import { useMemo } from "react";
+import type { Hero } from "../game/heroes";
+import type { ResourceCost } from "../game/cards";
+import type { PyramidNode } from "../game/pyramid";
+import type { SystemSymbol } from "../game/systems";
+import { useGameActions, toSystemTypeEnum } from "../dojo/useGameActions";
+import { useGameState, type GamePhase } from "../dojo/useGameState";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export type Faction = 'ATLANTIC' | 'CONTINENTAL'
-export type GamePhase = 'DRAFTING' | 'AGE_TRANSITION' | 'GAME_OVER'
+export type Faction = "ATLANTIC" | "CONTINENTAL";
 
 interface Production {
-  energy: number
-  materials: number
-  compute: number
+  energy: number;
+  materials: number;
+  compute: number;
 }
 
 export interface Player {
-  name: string
-  faction: Faction
-  capital: number
-  production: Production
-  systems: SystemSymbol[]
-  activeSystemBonuses: SystemSymbol[]
-  madeSystemChoice: boolean
-  heroes: Hero[]
-  playedCards: string[]
+  name: string;
+  faction: Faction;
+  capital: number;
+  production: Production;
+  systems: SystemSymbol[];
+  activeSystemBonuses: SystemSymbol[];
+  madeSystemChoice: boolean;
+  heroes: Hero[];
+  playedCards: string[];
 }
 
-interface GameState {
-  players: [Player, Player]
-  currentPlayer: 0 | 1
-  age: 1 | 2 | 3
-  agiTrack: [number, number]
-  escalationTrack: number
-  pyramid: PyramidNode[]
-  phase: GamePhase
-  selectedCard: number | null
-  availableHeroes: Hero[]
-  heroPickerOpen: boolean
-  usedHeroIds: string[]
-  systemBonusChoice: { playerIndex: 0 | 1; options: SystemSymbol[] } | null
-
-  // Actions
-  initGame: () => void
-  selectCard: (position: number) => void
-  playCard: () => void
-  discardCard: () => void
-  playCardAt: (position: number) => void
-  discardCardAt: (position: number) => void
-  invokeHero: (heroId: string) => void
-  toggleHeroPicker: () => void
-  chooseSystemBonus: (symbol: SystemSymbol) => void
-  nextTurn: () => void
-  nextAge: () => void
+interface UIState {
+  gameId: number | null;
+  selectedCard: number | null;
+  heroPickerOpen: boolean;
+  setGameId: (id: number | null) => void;
+  selectCard: (position: number | null) => void;
+  toggleHeroPicker: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+export const useUIStore = create<UIState>((set, get) => ({
+  gameId: null,
+  selectedCard: null,
+  heroPickerOpen: false,
 
-function shuffle<T>(arr: T[]): T[] {
-  const out = [...arr]
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    const tmp = out[i]
-    out[i] = out[j]
-    out[j] = tmp
-  }
-  return out
+  setGameId: (id) => set({ gameId: id, selectedCard: null, heroPickerOpen: false }),
+  selectCard: (position) => {
+    const current = get().selectedCard;
+    set({ selectedCard: current === position ? null : position });
+  },
+  toggleHeroPicker: () => set({ heroPickerOpen: !get().heroPickerOpen }),
+}));
+
+interface GameStoreState {
+  players: [Player, Player];
+  currentPlayer: 0 | 1;
+  age: 1 | 2 | 3;
+  agiTrack: [number, number];
+  escalationTrack: number;
+  pyramid: PyramidNode[];
+  phase: GamePhase;
+  selectedCard: number | null;
+  availableHeroes: Hero[];
+  heroPickerOpen: boolean;
+  systemBonusChoice: { playerIndex: 0 | 1; options: SystemSymbol[] } | null;
+
+  initGame: () => void;
+  selectCard: (position: number | null) => void;
+  playCard: () => void;
+  discardCard: () => void;
+  playCardAt: (position: number) => void;
+  discardCardAt: (position: number) => void;
+  invokeHero: (heroId: string) => void;
+  toggleHeroPicker: () => void;
+  chooseSystemBonus: (symbol: SystemSymbol) => void;
+  nextAge: () => void;
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
-}
-
-function freshPlayers(): [Player, Player] {
-  return [
-    {
-      name: 'Atlantic Bloc',
-      faction: 'ATLANTIC',
-      capital: 3,
-      production: { energy: 0, materials: 0, compute: 0 },
-      systems: [],
-      activeSystemBonuses: [],
-      madeSystemChoice: false,
-      heroes: [],
-      playedCards: [],
-    },
-    {
-      name: 'Continental Bloc',
-      faction: 'CONTINENTAL',
-      capital: 3,
-      production: { energy: 0, materials: 0, compute: 0 },
-      systems: [],
-      activeSystemBonuses: [],
-      madeSystemChoice: false,
-      heroes: [],
-      playedCards: [],
-    },
-  ]
-}
-
-/** Check if a player can pay a resource cost using production surplus + capital. */
-export function canAfford(player: Pick<Player, 'capital' | 'production'>, cost: ResourceCost, extraCapital: number = 0): boolean {
-  const eNeed = Math.max(0, (cost.energy ?? 0) - player.production.energy)
-  const mNeed = Math.max(0, (cost.materials ?? 0) - player.production.materials)
-  const cNeed = Math.max(0, (cost.compute ?? 0) - player.production.compute)
-  const capitalNeeded = eNeed + mNeed + cNeed + extraCapital
-  return player.capital >= capitalNeeded
-}
-
-/**
- * Deduct resource cost from player. Uses production first, then capital for the remainder.
- * Mutates the player object in place — caller must clone before calling.
- */
-function payCost(player: Player, cost: ResourceCost, extraCapital: number = 0): void {
-  const eNeed = Math.max(0, (cost.energy ?? 0) - player.production.energy)
-  const mNeed = Math.max(0, (cost.materials ?? 0) - player.production.materials)
-  const cNeed = Math.max(0, (cost.compute ?? 0) - player.production.compute)
-  player.capital -= (eNeed + mNeed + cNeed + extraCapital)
+export function canAfford(
+  player: Pick<Player, "capital" | "production">,
+  cost: ResourceCost,
+  extraCapital: number = 0,
+): boolean {
+  const eNeed = Math.max(0, (cost.energy ?? 0) - player.production.energy);
+  const mNeed = Math.max(0, (cost.materials ?? 0) - player.production.materials);
+  const cNeed = Math.max(0, (cost.compute ?? 0) - player.production.compute);
+  const capitalNeeded = eNeed + mNeed + cNeed + extraCapital;
+  return player.capital >= capitalNeeded;
 }
 
 export function getSellValue(age: 1 | 2 | 3): number {
-  return age
+  return age;
 }
 
-function cardsForAge(age: 1 | 2 | 3): Card[] {
-  switch (age) {
-    case 1: return AGE_1_CARDS
-    case 2: return AGE_2_CARDS
-    case 3: return AGE_3_CARDS
-  }
+export function useGameStore<T>(selector: (state: GameStoreState) => T): T {
+  const { gameId, selectedCard, heroPickerOpen, selectCard, toggleHeroPicker } = useUIStore();
+  const gameState = useGameState(gameId);
+  const actions = useGameActions();
+
+  const storeState = useMemo<GameStoreState>(() => {
+    const playSelected = () => {
+      if (selectedCard === null) return;
+      void actions.playCard(selectedCard);
+    };
+
+    const discardSelected = () => {
+      if (selectedCard === null) return;
+      void actions.discardCard(selectedCard);
+    };
+
+    return {
+      players: gameState.players,
+      currentPlayer: gameState.currentPlayer,
+      age: gameState.age,
+      agiTrack: gameState.agiTrack,
+      escalationTrack: gameState.escalationTrack,
+      pyramid: gameState.pyramid,
+      phase: gameState.phase,
+      selectedCard,
+      availableHeroes: gameState.availableHeroes,
+      heroPickerOpen,
+      systemBonusChoice: gameState.systemBonusChoice,
+
+      initGame: () => {
+        void actions.createGame();
+      },
+      selectCard,
+      playCard: playSelected,
+      discardCard: discardSelected,
+      playCardAt: (position) => {
+        void actions.playCard(position);
+      },
+      discardCardAt: (position) => {
+        void actions.discardCard(position);
+      },
+      invokeHero: (heroId) => {
+        const heroSlot = gameState.availableHeroes.findIndex((hero) => hero.id === heroId);
+        if (heroSlot < 0) return;
+        void actions.invokeHero(heroSlot);
+      },
+      toggleHeroPicker,
+      chooseSystemBonus: (symbol) => {
+        void actions.chooseSystemBonus(toSystemTypeEnum(symbol));
+      },
+      nextAge: () => {
+        void actions.nextAge();
+      },
+    };
+  }, [actions, gameState, heroPickerOpen, selectCard, selectedCard, toggleHeroPicker]);
+
+  return selector(storeState);
 }
-
-function clonePlayer(p: Player): Player {
-  return {
-    ...p,
-    production: { ...p.production },
-    systems: [...p.systems],
-    activeSystemBonuses: [...p.activeSystemBonuses],
-    heroes: [...p.heroes],
-    playedCards: [...p.playedCards],
-  }
-}
-
-function clonePlayers(players: [Player, Player]): [Player, Player] {
-  return [clonePlayer(players[0]), clonePlayer(players[1])]
-}
-
-// ---------------------------------------------------------------------------
-// System bonus helpers
-// ---------------------------------------------------------------------------
-
-/** Check system state after gaining a new symbol. */
-function checkSystemState(player: Player): {
-  newPairBonuses: SystemSymbol[]
-  offerChoice: SystemSymbol[] | null
-  instantWin: boolean
-} {
-  const uniqueTypes = [...new Set(player.systems)]
-
-  // All 4 types → instant Systems Victory
-  if (uniqueTypes.length >= 4) {
-    return { newPairBonuses: [], offerChoice: null, instantWin: true }
-  }
-
-  // Check for new pairs (count >= 2, not already bonused)
-  const counts = new Map<SystemSymbol, number>()
-  for (const s of player.systems) {
-    counts.set(s, (counts.get(s) ?? 0) + 1)
-  }
-
-  const newPairBonuses: SystemSymbol[] = []
-  for (const [sym, count] of counts) {
-    if (count >= 2 && !player.activeSystemBonuses.includes(sym)) {
-      newPairBonuses.push(sym)
-    }
-  }
-
-  // 3 different types → choose one bonus (if no choice made yet)
-  if (uniqueTypes.length >= 3 && !player.madeSystemChoice) {
-    const alreadyBonused = new Set([...player.activeSystemBonuses, ...newPairBonuses])
-    const choiceOptions = uniqueTypes.filter(t => !alreadyBonused.has(t))
-    if (choiceOptions.length > 0) {
-      return { newPairBonuses, offerChoice: choiceOptions, instantWin: false }
-    }
-  }
-
-  return { newPairBonuses, offerChoice: null, instantWin: false }
-}
-
-/** Apply a system bonus to a player (mutates in place). */
-function applySystemBonus(player: Player, symbol: SystemSymbol): void {
-  player.activeSystemBonuses.push(symbol)
-  if (symbol === 'COMPUTE') {
-    player.production.compute += 2
-  } else if (symbol === 'CYBER') {
-    player.production.energy += 2
-  } else if (symbol === 'DIPLOMACY') {
-    player.production.materials += 2
-  }
-  // FINANCE: +3 capital/turn, handled in nextTurn
-}
-
-// ---------------------------------------------------------------------------
-// Store
-// ---------------------------------------------------------------------------
-
-export const useGameStore = create<GameState>((set, get) => ({
-  players: freshPlayers(),
-  currentPlayer: 0,
-  age: 1,
-  agiTrack: [0, 0],
-  escalationTrack: 0,
-  pyramid: [],
-  phase: 'DRAFTING',
-  selectedCard: null,
-  availableHeroes: [],
-  heroPickerOpen: false,
-  usedHeroIds: [],
-  systemBonusChoice: null,
-
-  // ---- initGame -----------------------------------------------------------
-  initGame: () => {
-    const cards = shuffle(cardsForAge(1)).slice(0, 10)
-    const pyramid = buildPyramid(cards)
-    const availableHeroes = shuffle(HEROES).slice(0, 3)
-
-    set({
-      players: freshPlayers(),
-      currentPlayer: 0,
-      age: 1,
-      agiTrack: [0, 0],
-      escalationTrack: 0,
-      pyramid,
-      phase: 'DRAFTING',
-      selectedCard: null,
-      availableHeroes,
-      heroPickerOpen: false,
-      usedHeroIds: [],
-      systemBonusChoice: null,
-    })
-  },
-
-  // ---- selectCard ---------------------------------------------------------
-  selectCard: (position: number) => {
-    const { phase, pyramid, selectedCard, systemBonusChoice } = get()
-    if (phase !== 'DRAFTING' || systemBonusChoice) return
-
-    const node = pyramid.find((n) => n.position === position)
-    if (!node || node.taken) return
-    if (!isAvailable(position, pyramid)) return
-
-    set({ selectedCard: selectedCard === position ? null : position })
-  },
-
-  // ---- playCard (click-based, delegates to playCardAt) --------------------
-  playCard: () => {
-    const { selectedCard } = get()
-    if (selectedCard === null) return
-    get().playCardAt(selectedCard)
-  },
-
-  // ---- discardCard (click-based, delegates to discardCardAt) --------------
-  discardCard: () => {
-    const { selectedCard } = get()
-    if (selectedCard === null) return
-    get().discardCardAt(selectedCard)
-  },
-
-  // ---- playCardAt (drag-drop + click) ------------------------------------
-  playCardAt: (position: number) => {
-    const state = get()
-    if (state.phase !== 'DRAFTING' || state.systemBonusChoice) return
-
-    const nodeIndex = state.pyramid.findIndex((n) => n.position === position)
-    if (nodeIndex === -1) return
-    const node = state.pyramid[nodeIndex]
-    if (node.taken) return
-    if (!isAvailable(position, state.pyramid)) return
-
-    const card = node.card
-    const player = state.players[state.currentPlayer]
-
-    const isFreeViaChain = card.chainFrom
-      ? player.playedCards.includes(card.chainFrom)
-      : false
-
-    const cost = isFreeViaChain ? {} : card.cost
-    if (!isFreeViaChain && !canAfford(player, cost)) return
-
-    const newPlayers = clonePlayers(state.players)
-    const newAgiTrack: [number, number] = [...state.agiTrack]
-    let newEscalation = state.escalationTrack
-    let newPhase: GamePhase = state.phase
-
-    const p = newPlayers[state.currentPlayer]
-
-    if (!isFreeViaChain) {
-      payCost(p, cost)
-    }
-
-    p.playedCards.push(card.id)
-
-    // Apply effects
-    const effect = card.effect
-
-    if (effect.agi) {
-      newAgiTrack[state.currentPlayer] = clamp(newAgiTrack[state.currentPlayer] + effect.agi, 0, 6)
-      if (newAgiTrack[state.currentPlayer] >= 6) newPhase = 'GAME_OVER'
-    }
-
-    if (effect.escalation) {
-      if (state.currentPlayer === 0) {
-        newEscalation = clamp(newEscalation + effect.escalation, -6, 6)
-      } else {
-        newEscalation = clamp(newEscalation - effect.escalation, -6, 6)
-      }
-      if (newEscalation === 6 || newEscalation === -6) newPhase = 'GAME_OVER'
-    }
-
-    if (effect.capital) p.capital += effect.capital
-    if (effect.energyPerTurn) p.production.energy += effect.energyPerTurn
-    if (effect.materialsPerTurn) p.production.materials += effect.materialsPerTurn
-    if (effect.computePerTurn) p.production.compute += effect.computePerTurn
-    if (effect.capitalPerTurn) p.capital += effect.capitalPerTurn
-    if (effect.symbol) p.systems.push(effect.symbol)
-    if (card.symbol) p.systems.push(card.symbol)
-
-    const newPyramid = state.pyramid.map((n, i) =>
-      i === nodeIndex ? { ...n, taken: true } : n,
-    )
-
-    // Check system bonuses if a system symbol was gained
-    let systemBonusChoice: GameState['systemBonusChoice'] = null
-    if (newPhase !== 'GAME_OVER' && (effect.symbol || card.symbol)) {
-      const systemCheck = checkSystemState(p)
-      if (systemCheck.instantWin) {
-        newPhase = 'GAME_OVER'
-      } else {
-        for (const bonus of systemCheck.newPairBonuses) {
-          applySystemBonus(p, bonus)
-        }
-        if (systemCheck.offerChoice) {
-          systemBonusChoice = {
-            playerIndex: state.currentPlayer,
-            options: systemCheck.offerChoice,
-          }
-        }
-      }
-    }
-
-    set({
-      players: newPlayers,
-      agiTrack: newAgiTrack,
-      escalationTrack: newEscalation,
-      pyramid: newPyramid,
-      phase: newPhase,
-      selectedCard: null,
-      systemBonusChoice,
-    })
-
-    if (newPhase !== 'GAME_OVER' && !systemBonusChoice) get().nextTurn()
-  },
-
-  // ---- discardCardAt (drag-drop + click) ---------------------------------
-  discardCardAt: (position: number) => {
-    const state = get()
-    if (state.phase !== 'DRAFTING' || state.systemBonusChoice) return
-
-    const nodeIndex = state.pyramid.findIndex((n) => n.position === position)
-    if (nodeIndex === -1) return
-    const node = state.pyramid[nodeIndex]
-    if (node.taken) return
-    if (!isAvailable(position, state.pyramid)) return
-
-    const newPlayers = clonePlayers(state.players)
-    newPlayers[state.currentPlayer].capital += state.age
-
-    const newPyramid = state.pyramid.map((n, i) =>
-      i === nodeIndex ? { ...n, taken: true } : n,
-    )
-
-    set({
-      players: newPlayers,
-      pyramid: newPyramid,
-      selectedCard: null,
-    })
-
-    get().nextTurn()
-  },
-
-  // ---- invokeHero ---------------------------------------------------------
-  invokeHero: (heroId: string) => {
-    const state = get()
-    const { currentPlayer, availableHeroes } = state
-    if (state.systemBonusChoice) return
-
-    const hero = availableHeroes.find((h) => h.id === heroId)
-    if (!hero) return
-
-    const player = state.players[currentPlayer]
-    const surcharge = player.heroes.length * 2
-
-    if (!canAfford(player, hero.cost, surcharge)) return
-
-    const newPlayers = clonePlayers(state.players)
-    const p = newPlayers[currentPlayer]
-
-    payCost(p, hero.cost, surcharge)
-    p.heroes.push({ ...hero })
-
-    // Apply hero effect
-    const eff = hero.effect
-    const newAgiTrack: [number, number] = [...state.agiTrack]
-    let newEscalation = state.escalationTrack
-    let newPhase: GamePhase = state.phase
-
-    if (eff.agi) {
-      newAgiTrack[currentPlayer] = clamp(newAgiTrack[currentPlayer] + eff.agi, 0, 6)
-      if (newAgiTrack[currentPlayer] >= 6) newPhase = 'GAME_OVER'
-    }
-    if (eff.escalation) {
-      if (currentPlayer === 0) {
-        newEscalation = clamp(newEscalation + eff.escalation, -6, 6)
-      } else {
-        newEscalation = clamp(newEscalation - eff.escalation, -6, 6)
-      }
-      if (newEscalation === 6 || newEscalation === -6) newPhase = 'GAME_OVER'
-    }
-    if (eff.capital) p.capital += eff.capital
-    if (eff.energyPerTurn) p.production.energy += eff.energyPerTurn
-    if (eff.materialsPerTurn) p.production.materials += eff.materialsPerTurn
-    if (eff.computePerTurn) p.production.compute += eff.computePerTurn
-    if (eff.symbol) p.systems.push(eff.symbol)
-
-    // Check system bonuses if hero granted a symbol
-    let systemBonusChoice: GameState['systemBonusChoice'] = null
-    if (newPhase !== 'GAME_OVER' && eff.symbol) {
-      const systemCheck = checkSystemState(p)
-      if (systemCheck.instantWin) {
-        newPhase = 'GAME_OVER'
-      } else {
-        for (const bonus of systemCheck.newPairBonuses) {
-          applySystemBonus(p, bonus)
-        }
-        if (systemCheck.offerChoice) {
-          systemBonusChoice = {
-            playerIndex: currentPlayer,
-            options: systemCheck.offerChoice,
-          }
-        }
-      }
-    }
-
-    set({
-      players: newPlayers,
-      agiTrack: newAgiTrack,
-      escalationTrack: newEscalation,
-      phase: newPhase,
-      availableHeroes: availableHeroes.filter((h) => h.id !== heroId),
-      usedHeroIds: [...state.usedHeroIds, heroId],
-      heroPickerOpen: false,
-      selectedCard: null,
-      systemBonusChoice,
-    })
-
-    if (newPhase !== 'GAME_OVER' && !systemBonusChoice) get().nextTurn()
-  },
-
-  // ---- toggleHeroPicker ---------------------------------------------------
-  toggleHeroPicker: () => {
-    set({ heroPickerOpen: !get().heroPickerOpen })
-  },
-
-  // ---- chooseSystemBonus --------------------------------------------------
-  chooseSystemBonus: (symbol: SystemSymbol) => {
-    const state = get()
-    if (!state.systemBonusChoice) return
-
-    const { playerIndex } = state.systemBonusChoice
-    const newPlayers = clonePlayers(state.players)
-    const p = newPlayers[playerIndex]
-
-    applySystemBonus(p, symbol)
-    p.madeSystemChoice = true
-
-    set({
-      players: newPlayers,
-      systemBonusChoice: null,
-    })
-
-    get().nextTurn()
-  },
-
-  // ---- nextTurn -----------------------------------------------------------
-  nextTurn: () => {
-    const state = get()
-    const { pyramid, currentPlayer, age } = state
-
-    const allTaken = pyramid.every((n) => n.taken)
-    if (allTaken) {
-      if (age < 3) {
-        set({ phase: 'AGE_TRANSITION' })
-      } else {
-        set({ phase: 'GAME_OVER' })
-      }
-      return
-    }
-
-    const nextPlayer: 0 | 1 = currentPlayer === 0 ? 1 : 0
-
-    const newPlayers = clonePlayers(state.players)
-    const p = newPlayers[nextPlayer]
-
-    // Grant production income (includes COMPUTE/CYBER/DIPLOMACY bonus production)
-    const totalIncome = p.production.energy + p.production.materials + p.production.compute
-    if (totalIncome > 0) {
-      p.capital += totalIncome
-    }
-
-    // FINANCE bonus: +3 capital/turn
-    if (p.activeSystemBonuses.includes('FINANCE')) {
-      p.capital += 3
-    }
-
-    set({
-      players: newPlayers,
-      currentPlayer: nextPlayer,
-    })
-  },
-
-  // ---- nextAge ------------------------------------------------------------
-  nextAge: () => {
-    const state = get()
-    const nextAge = (state.age + 1) as 1 | 2 | 3
-    if (nextAge > 3) return
-
-    const cards = shuffle(cardsForAge(nextAge)).slice(0, 10)
-    const pyramid = buildPyramid(cards)
-
-    // Draw 3 new heroes not already used
-    const remainingHeroes = HEROES.filter((h) => !state.usedHeroIds.includes(h.id))
-    const availableHeroes = shuffle(remainingHeroes).slice(0, 3)
-
-    // Alternate first player
-    const firstPlayer: 0 | 1 = state.currentPlayer === 0 ? 1 : 0
-
-    set({
-      age: nextAge,
-      pyramid,
-      phase: 'DRAFTING',
-      selectedCard: null,
-      availableHeroes,
-      heroPickerOpen: false,
-      currentPlayer: firstPlayer,
-      systemBonusChoice: null,
-    })
-  },
-}))
