@@ -2,6 +2,7 @@ pub mod models;
 pub mod cards;
 pub mod heroes;
 pub mod pyramid;
+pub mod shuffle;
 
 pub mod systems {
     pub mod actions;
@@ -13,4 +14,5 @@ pub mod tests {
     mod test_heroes;
     mod test_pyramid;
     mod test_world;
+    mod test_game;
 }
