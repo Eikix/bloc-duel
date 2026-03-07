@@ -11,12 +11,7 @@ const ROWS: number[][] = [
   [6, 7, 8, 9],
 ]
 
-// Row 3 (bottom, most available) gets highest z-index
-// Available cards within a row get boosted further
 const ROW_Z: Record<number, number> = { 0: 10, 1: 20, 2: 30, 3: 40 }
-
-// Overlap: each row pulls up into the one above it
-// Negative margin eats into the previous row's space
 const ROW_OVERLAP = '-mt-6 sm:-mt-7 md:-mt-8 lg:-mt-9 xl:-mt-10'
 
 interface CardPyramidProps {
@@ -63,13 +58,11 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                 )
               }
 
-              const avail = isAvailable(node.position, pyramid)
+              const available = isAvailable(node.position, pyramid)
               const selected = selectedCard === node.position
-
               const isFreeViaChain = node.card.chainFrom !== undefined
                 ? player.playedCards.includes(node.card.chainFrom)
                 : false
-
               const effectiveCost = getEffectiveCost(node.card)
               const affordable = isFreeViaChain || canAfford(player, effectiveCost)
 
@@ -77,7 +70,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                 <Card
                   key={`${pyramidKey}-${node.card.id}`}
                   node={node}
-                  available={avail}
+                  available={available}
                   selected={selected}
                   affordable={affordable}
                   isFreeViaChain={isFreeViaChain}
