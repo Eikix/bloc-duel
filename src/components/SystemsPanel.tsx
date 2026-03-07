@@ -6,43 +6,43 @@ interface SystemsPanelProps {
   activeSystemBonuses: SystemSymbol[]
 }
 
-const SYMBOL_INFO: Record<SystemSymbol, { color: string; label: string }> = {
-  COMPUTE: { color: 'bg-blue-500', label: 'COM' },
-  FINANCE: { color: 'bg-amber-500', label: 'FIN' },
-  CYBER: { color: 'bg-emerald-500', label: 'CYB' },
-  DIPLOMACY: { color: 'bg-violet-500', label: 'DIP' },
+const SYMBOL_INFO: Record<SystemSymbol, { chip: string; label: string }> = {
+  COMPUTE: { chip: 'bg-blue-500/90 text-white', label: 'COM' },
+  FINANCE: { chip: 'bg-amber-500/90 text-white', label: 'FIN' },
+  CYBER: { chip: 'bg-emerald-500/90 text-white', label: 'CYB' },
+  DIPLOMACY: { chip: 'bg-rose-500/90 text-white', label: 'DIP' },
 }
 
 export default function SystemsPanel({ systems, activeSystemBonuses }: SystemsPanelProps) {
-  // Group by symbol and count
   const counts = new Map<SystemSymbol, number>()
-  for (const s of systems) {
-    counts.set(s, (counts.get(s) ?? 0) + 1)
+  for (const system of systems) {
+    counts.set(system, (counts.get(system) ?? 0) + 1)
   }
 
   if (counts.size === 0) {
-    return <span className="font-mono text-[9px] text-ink-faint italic">no systems</span>
+    return <span className="font-mono text-[10px] italic text-ink-faint">No systems online</span>
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1">
-      {[...counts.entries()].map(([sym, count]) => {
-        const info = SYMBOL_INFO[sym]
-        const isActive = activeSystemBonuses.includes(sym)
+    <div className="flex flex-wrap items-center gap-1.5">
+      {[...counts.entries()].map(([symbol, count]) => {
+        const info = SYMBOL_INFO[symbol]
+        const isActive = activeSystemBonuses.includes(symbol)
+
         return (
           <div
-            key={sym}
-            className="flex items-center gap-0.5"
-            title={`${sym}: ${count} card${count > 1 ? 's' : ''}${isActive ? ' \u2014 BONUS: ' + SYSTEM_BONUS_LABELS[sym] : ''}`}
+            key={symbol}
+            className="flex items-center gap-1"
+            title={`${symbol}: ${count} card${count > 1 ? 's' : ''}${isActive ? ' - BONUS: ' + SYSTEM_BONUS_LABELS[symbol] : ''}`}
           >
-            <span className={`${info.color} rounded px-1 py-0.5 font-mono text-[9px] font-bold text-white leading-none ${isActive ? 'ring-1 ring-yellow-400' : ''}`}>
+            <span
+              className={`rounded-lg px-2 py-1 font-mono text-[10px] font-bold leading-none ${info.chip} ${
+                isActive ? 'ring-2 ring-amber-300 ring-offset-1 ring-offset-white/80' : ''
+              }`}
+            >
               {info.label}
             </span>
-            {count > 1 && (
-              <span className="font-mono text-[9px] font-bold text-ink-muted">
-                x{count}
-              </span>
-            )}
+            {count > 1 && <span className="font-mono text-[10px] font-semibold text-ink-muted">x{count}</span>}
           </div>
         )
       })}

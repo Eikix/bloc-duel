@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useGameStore, canAfford } from '../store/gameStore'
 import { formatCost } from '../game/format'
 
@@ -18,103 +18,77 @@ export default function HeroPicker() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-40 flex items-center justify-center bg-ink/25 backdrop-blur-sm"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-[radial-gradient(circle,rgba(17,32,56,0.18),rgba(17,32,56,0.52))] px-4 backdrop-blur-sm"
           onClick={toggle}
         >
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            initial={{ opacity: 0, y: 36, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="relative"
-            onClick={(e) => e.stopPropagation()}
+            exit={{ opacity: 0, y: 24, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            className="panel-steel relative w-full max-w-5xl rounded-[32px] px-5 py-6 md:px-7"
+            onClick={(event) => event.stopPropagation()}
           >
-            {/* Title */}
-            <div className="text-center mb-6">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint mb-1">
-                Invoke a Hero
+            <div className="mb-6 text-center">
+              <p className="section-label mb-2">Executive asset deployment</p>
+              <h3 className="font-display text-3xl font-black text-ink">Invoke a historical hero</h3>
+              <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
+                Calling a hero replaces your normal draft pick this turn and permanently increases the surcharge for future hero calls.
               </p>
-              <p className="font-body text-xs text-ink-muted">
-                Replaces your draft pick this turn.
-                {surcharge > 0 && (
-                  <span className="ml-1 text-amber-600 font-semibold">
-                    Surcharge: 💰+{surcharge}
-                  </span>
-                )}
-              </p>
+              {surcharge > 0 && (
+                <span className="mt-3 inline-flex rounded-full border border-amber-300 bg-amber-50 px-3 py-1 font-mono text-[11px] font-semibold text-amber-700">
+                  Current surcharge: +{surcharge} capital
+                </span>
+              )}
             </div>
 
-            {/* Hero cards */}
-            <div className="flex gap-4 justify-center">
-              {heroes.map((hero, i) => {
+            <div className="grid gap-4 lg:grid-cols-3">
+              {heroes.map((hero, index) => {
                 const affordable = canAfford(current, hero.cost, surcharge)
+
                 return (
                   <motion.button
-                     key={hero.slot}
-                    initial={{ opacity: 0, y: 20 }}
+                    key={hero.slot}
+                    initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.08 }}
+                    transition={{ delay: index * 0.06 }}
                     disabled={!affordable}
                     onClick={() => invokeHero(hero.slot)}
-                    className={`
-                      group relative w-52 rounded-2xl border-2 bg-surface-raised text-left
-                      transition-all duration-200
-                      ${affordable
-                        ? 'border-amber-300 shadow-lg hover:shadow-xl hover:border-amber-400 cursor-pointer'
-                        : 'border-border opacity-50 cursor-not-allowed'
-                      }
-                    `}
+                    className={`group relative overflow-hidden rounded-[28px] border text-left transition-all duration-200 ${
+                      affordable
+                        ? 'border-amber-300 bg-[linear-gradient(180deg,rgba(255,250,235,0.98),rgba(251,235,187,0.9))] shadow-[0_24px_34px_rgba(245,158,11,0.16)] hover:-translate-y-1 hover:brightness-105'
+                        : 'border-border bg-white/55 opacity-55 cursor-not-allowed'
+                    }`}
                   >
-                    {/* Gold accent bar */}
-                    <div className="h-1.5 rounded-t-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
+                    <div className="h-2 bg-[linear-gradient(90deg,#f59e0b,#facc15,#f59e0b)]" />
 
-                    <div className="px-4 pt-3 pb-4">
-                      {/* Cost badge */}
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">
-                          Hero
+                    <div className="px-5 py-5">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <span className="rounded-full bg-white/72 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-amber-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+                          Hero asset
                         </span>
-                        <span className={`
-                          rounded-full px-2 py-0.5 font-mono text-xs font-bold
-                          ${affordable
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-gray-100 text-gray-400'
-                          }
-                        `}>
+                        <span className={`rounded-full px-2.5 py-1 font-mono text-xs font-bold ${
+                          affordable ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-400'
+                        }`}>
                           {formatCost(hero.cost)}
-                          {surcharge > 0 && ` +${surcharge}`}
+                          {surcharge > 0 ? ` +${surcharge}` : ''}
                         </span>
                       </div>
 
-                      {/* Name */}
-                      <h4 className="font-display text-base font-bold text-ink leading-tight mb-0.5">
-                        {hero.name}
-                      </h4>
+                      <h4 className="font-display text-2xl font-black leading-tight text-ink">{hero.name}</h4>
+                      <p className="mt-1 font-body text-sm font-semibold italic text-amber-700">{hero.title}</p>
 
-                      {/* Title */}
-                      <p className="font-body text-[11px] font-medium text-amber-600 italic mb-2">
-                        {hero.title}
-                      </p>
-
-                      {/* Mechanical description */}
-                      <p className="font-mono text-xs text-ink-muted leading-relaxed">
-                        {hero.description}
-                      </p>
+                      <div className="mt-4 rounded-[22px] border border-white/76 bg-white/62 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+                        <p className="section-label mb-2">Operational effect</p>
+                        <p className="font-mono text-xs leading-relaxed text-ink-muted">{hero.description}</p>
+                      </div>
                     </div>
-
-                    {/* Hover glow */}
-                    {affordable && (
-                      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ring-2 ring-amber-300/40" />
-                    )}
                   </motion.button>
                 )
               })}
             </div>
 
-            {/* Close hint */}
-            <p className="text-center mt-5 font-mono text-[10px] text-ink-faint">
-              Click outside to close
-            </p>
+            <p className="mt-5 text-center font-mono text-[10px] text-ink-faint">Click outside the command deck to close.</p>
           </motion.div>
         </motion.div>
       )}
