@@ -88,6 +88,11 @@ function canJoinGame(game: GameSummary, walletAddress: string | null): boolean {
   return isZeroAddress(game.playerTwo) && normalizeAddress(game.playerOne) !== normalizeAddress(walletAddress)
 }
 
+function getBurnerIndexForAddress(address: string, burnerAddresses: string[]): number {
+  const normalizedAddress = normalizeAddress(address)
+  return burnerAddresses.findIndex((burnerAddress) => normalizeAddress(burnerAddress) === normalizedAddress)
+}
+
 export function Game() {
   const [runtime, setRuntimeState] = useState<BlocDuelRuntime | null>(null)
   const [isBootstrappingRuntime, setIsBootstrappingRuntime] = useState(true)
@@ -343,6 +348,7 @@ export function Game() {
   const dropRefs = { playField: playFieldRef, discard: discardRef }
 
   const current = players[currentPlayer]
+  const currentPlayerAddress = current.address
   const selectedNode = selectedCard !== null ? pyramid.find((node) => node.position === selectedCard) ?? null : null
   const isFreeViaChain = selectedNode?.card.chainFrom !== undefined
     ? current.playedCards.includes(selectedNode.card.chainFrom)
@@ -356,6 +362,18 @@ export function Game() {
   const selectedSummary = games.find((game) => game.gameId === selectedGameId) ?? null
   const runtimeReady = runtime !== null
   const controllerConnector = walletMode === 'controller' ? connectors[0] ?? null : null
+  const currentTurnIsLocalWallet = address !== undefined
+    && normalizeAddress(address) === normalizeAddress(currentPlayerAddress)
+  const currentTurnBurnerIndex = walletMode === 'burner'
+    ? getBurnerIndexForAddress(currentPlayerAddress, burnerAddresses)
+    : -1
+  const currentTurnLabel = selectedGameId === null
+    ? null
+    : isZeroAddress(currentPlayerAddress)
+      ? 'Turn: waiting for opponent'
+      : walletMode === 'burner'
+        ? `Turn: ${currentTurnBurnerIndex >= 0 ? `Burner ${currentTurnBurnerIndex + 1}` : shortAddress(currentPlayerAddress)} (${shortAddress(currentPlayerAddress)})`
+        : `Turn: ${current.name} (${shortAddress(currentPlayerAddress)})`
 
   const handleJoinById = async () => {
     const parsed = Number(joinGameId)
@@ -388,6 +406,20 @@ export function Game() {
           {selectedGameId !== null && phase !== 'LOBBY' && (
             <span className="rounded-md bg-ink/5 px-2 py-0.5 font-mono text-xs font-bold text-ink-muted">
               Age {AGE_LABELS[age]}
+            </span>
+          )}
+          {currentTurnLabel && (
+            <span
+              className={
+                `rounded-md border px-2 py-0.5 font-mono text-xs ${
+                  currentTurnIsLocalWallet
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                    : 'border-border bg-surface-raised text-ink-muted'
+                }`
+              }
+            >
+              {currentTurnLabel}
+              {currentTurnIsLocalWallet && phase !== 'GAME_OVER' ? ' - your turn' : ''}
             </span>
           )}
         </div>

@@ -32,6 +32,8 @@ const TYPE_STYLES: Record<CardType, { stripe: string; bg: string; text: string }
   SYSTEM: { stripe: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700' },
 }
 
+const DRAG_CLICK_THRESHOLD_PX = 8
+
 function formatEffects(effect: CardEffect, symbol?: SystemSymbol): string[] {
   const parts: string[] = []
   if (effect.agi) parts.push(`AGI+${effect.agi}`)
@@ -67,10 +69,19 @@ export default function Card({
   const [isDragging, setIsDragging] = useState(false)
   const [shaking, setShaking] = useState(false)
   const didDragRef = useRef(false)
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null)
 
   const canDrag = available && !!dropRefs
 
   const handleDrag = (_: unknown, info: { point: { x: number; y: number } }) => {
+    if (pressStartRef.current) {
+      const dx = info.point.x - pressStartRef.current.x
+      const dy = info.point.y - pressStartRef.current.y
+      if (Math.hypot(dx, dy) > DRAG_CLICK_THRESHOLD_PX) {
+        didDragRef.current = true
+      }
+    }
+
     if (!dropRefs || !onDragOverZone) return
     if (isPointInRect(dropRefs.playField, info.point)) {
       onDragOverZone('play')
@@ -84,6 +95,7 @@ export default function Card({
   const handleDragEnd = (_: unknown, info: { point: { x: number; y: number } }) => {
     setIsDragging(false)
     onDragOverZone?.(null)
+    pressStartRef.current = null
     if (!dropRefs) return
 
     if (isPointInRect(dropRefs.playField, info.point)) {
@@ -105,8 +117,12 @@ export default function Card({
       dragElastic={0.8}
       dragMomentum={false}
       onDrag={canDrag ? handleDrag : undefined}
-      onDragStart={canDrag ? () => { setIsDragging(true); didDragRef.current = true } : undefined}
+      onDragStart={canDrag ? () => { setIsDragging(true) } : undefined}
       onDragEnd={canDrag ? handleDragEnd : undefined}
+      onPointerDownCapture={(event) => {
+        didDragRef.current = false
+        pressStartRef.current = { x: event.clientX, y: event.clientY }
+      }}
       className={`
         relative w-[4.5rem] h-24 sm:w-[5rem] sm:h-[6.75rem] md:w-24 md:h-[8.5rem]
         rounded-lg border ${style.bg}
