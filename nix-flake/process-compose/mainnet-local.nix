@@ -174,6 +174,9 @@
           };
           environment = {
             NODE_ENV = "development";
+            PUBLIC_NODE_URL = "https://api.cartridge.gg/x/starknet/mainnet";
+            PUBLIC_STARKNET_NETWORK = "mainnet";
+            PUBLIC_TORII_URL = "http://127.0.0.1:${toString common.ports.toriiPort}";
           };
         };
       };

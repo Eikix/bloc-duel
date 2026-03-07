@@ -138,7 +138,7 @@ export default function Card({
 
       {/* Cost — top right corner */}
       <div className="flex items-center justify-between px-1.5 md:px-2 pt-1">
-        {card.chainTo && <span className="text-[9px] md:text-[10px] text-violet-500">⛓</span>}
+        {card.chainTo !== undefined && <span className="text-[9px] md:text-[10px] text-violet-500">⛓</span>}
         <span className="ml-auto font-mono text-[9px] md:text-[10px] font-semibold text-ink-muted leading-none">
           {isFree ? 'free' : formatCost(displayCost)}
         </span>

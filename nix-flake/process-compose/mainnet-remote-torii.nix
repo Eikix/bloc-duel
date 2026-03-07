@@ -80,6 +80,8 @@
           };
           environment = {
             NODE_ENV = "development";
+            PUBLIC_NODE_URL = "https://api.cartridge.gg/x/starknet/mainnet";
+            PUBLIC_STARKNET_NETWORK = "mainnet";
           };
         };
       };

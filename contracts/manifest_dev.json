@@ -33,14 +33,19 @@
   },
   "contracts": [
     {
-      "address": "0x451aa47da048412734d2633aaf6fa68fdaf848e91a7cb97a142f1cbc96030e4",
-      "class_hash": "0x4f18a11b525c490977f7f40a3b1b2a33db66d528aea39872de4abe6b0e92221",
+      "address": "0x24cce672c8cbd91774ec94eec345bfaad6fa8729a787f359a2ffc112ad24e19",
+      "class_hash": "0x497675f490276a83b83c815745f82cd0b256fcc5a6cc924cae1189a4b8cd402",
       "init_calldata": [],
       "tag": "bloc_duel-actions",
       "selector": "0x481a9e32cee213c255ce0d2c9a488441f2488d9a1ad9cecd70c335d5cd98c2f",
       "systems": [
-        "spawn",
-        "move",
+        "create_game",
+        "join_game",
+        "play_card",
+        "discard_card",
+        "invoke_hero",
+        "choose_system_bonus",
+        "next_age",
         "upgrade"
       ]
     }
@@ -50,225 +55,859 @@
     {
       "members": [
         {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
+          "name": "game_id",
+          "type": "core::integer::u32",
           "key": true
         },
         {
-          "name": "directions",
-          "type": "core::array::Array::<bloc_duel::models::Direction>",
+          "name": "player_one",
+          "type": "core::starknet::contract_address::ContractAddress",
           "key": false
-        }
-      ],
-      "class_hash": "0x7c962cce617a7adf155ae2898c4a4626774a4d0c4d0434beb9f58a66ded2d72",
-      "tag": "bloc_duel-DirectionsAvailable",
-      "selector": "0x8349109d01aeedc15b8a14ccc54d2b38bd9f945eb70ffe1e4d4a412fcb8ef8"
-    },
-    {
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
-          "key": true
         },
         {
-          "name": "remaining",
+          "name": "player_two",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": false
+        },
+        {
+          "name": "current_player",
           "type": "core::integer::u8",
           "key": false
         },
         {
-          "name": "last_direction",
-          "type": "core::option::Option::<bloc_duel::models::Direction>",
+          "name": "age",
+          "type": "core::integer::u8",
           "key": false
         },
         {
-          "name": "can_move",
-          "type": "core::bool",
+          "name": "phase",
+          "type": "bloc_duel::types::GamePhase",
+          "key": false
+        },
+        {
+          "name": "agi_one",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "agi_two",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "escalation",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "winner",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "win_condition",
+          "type": "bloc_duel::types::WinCondition",
+          "key": false
+        },
+        {
+          "name": "seed",
+          "type": "core::felt252",
           "key": false
         }
       ],
-      "class_hash": "0x96cb61455459d3f9048ea863a270abc09daabbf7e29f77a0810547f0e09a64",
-      "tag": "bloc_duel-Moves",
-      "selector": "0x424e8531a25266abb8354e91230d26e8933ddd2ada50e0148f9c09153fb06ab"
+      "class_hash": "0xdc35c153bb231d5721289dcff4d6a396f2d840b38c9744f5fabf9ccb57a850",
+      "tag": "bloc_duel-Game",
+      "selector": "0x6d1ebf94e751f4357507c119865afcb92175132745621f21631c1ea4bdc08d5"
     },
     {
       "members": [
         {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
+          "name": "game_id",
+          "type": "core::integer::u32",
           "key": true
         },
         {
-          "name": "vec",
-          "type": "bloc_duel::models::Vec2",
+          "name": "hero_0",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "hero_1",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "hero_2",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "hero_0_taken",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "hero_1_taken",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "hero_2_taken",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "used_mask",
+          "type": "core::integer::u16",
           "key": false
         }
       ],
-      "class_hash": "0x687a912a83f47894b0f8159f7541824638ab0f9a98d12166b97fcd51bb13527",
-      "tag": "bloc_duel-Position",
-      "selector": "0x37f9a81cc73c1cb00488e5430a67d183990d155d8e317fb0fa27c80c53eeb84"
-    }
-  ],
-  "events": [
+      "class_hash": "0x6529eb3cb5583b24600f356e90aff89e6bb18baec6f098096ec6d93604ae8ee",
+      "tag": "bloc_duel-HeroPool",
+      "selector": "0x190db0b60915dccbf705661337d2a36b38cf57cd0efd7c0f088690ff9330d73"
+    },
     {
       "members": [
         {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress",
+          "name": "game_id",
+          "type": "core::integer::u32",
           "key": true
         },
         {
-          "name": "direction",
-          "type": "bloc_duel::models::Direction",
+          "name": "active",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "player_index",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "option_count",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "option_0",
+          "type": "bloc_duel::types::SystemType",
+          "key": false
+        },
+        {
+          "name": "option_1",
+          "type": "bloc_duel::types::SystemType",
+          "key": false
+        },
+        {
+          "name": "option_2",
+          "type": "bloc_duel::types::SystemType",
+          "key": false
+        },
+        {
+          "name": "option_3",
+          "type": "bloc_duel::types::SystemType",
           "key": false
         }
       ],
-      "class_hash": "0x5ef8ddba5d52bcbb816c102956b746f636d99d8764be72e141242917688f623",
-      "tag": "bloc_duel-Moved",
-      "selector": "0x1b29ce590bcb478ae3adc6a28542db9f9280f1d004f744321155d4c45b4fe0"
+      "class_hash": "0x6ae111d5e35a049c0213b9da22fd1d559e271988ed656427ef50e5a6dc969ad",
+      "tag": "bloc_duel-PendingChoice",
+      "selector": "0x19d154cf1c95c33126a42c4695e73a69654a6c6d631cb18f048e61e856da5ec"
+    },
+    {
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "player_index",
+          "type": "core::integer::u8",
+          "key": true
+        },
+        {
+          "name": "address",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": false
+        },
+        {
+          "name": "capital",
+          "type": "core::integer::u16",
+          "key": false
+        },
+        {
+          "name": "energy_prod",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "materials_prod",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "compute_prod",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "compute_count",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "finance_count",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "cyber_count",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "diplomacy_count",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "compute_bonus",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "finance_bonus",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "cyber_bonus",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "diplomacy_bonus",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "made_system_choice",
+          "type": "core::bool",
+          "key": false
+        },
+        {
+          "name": "hero_count",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "played_cards",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x5310206d9714d9aa41e6cf8db46cf8ec4599d9212a1832745eb61e33038986b",
+      "tag": "bloc_duel-PlayerState",
+      "selector": "0x4a761bb762209178a3d15a0e6b5b6779041fcb2cd31c5cb3718a376841e1b68"
+    },
+    {
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u32",
+          "key": true
+        },
+        {
+          "name": "slot_0",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_1",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_2",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_3",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_4",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_5",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_6",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_7",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_8",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "slot_9",
+          "type": "core::integer::u8",
+          "key": false
+        },
+        {
+          "name": "taken_mask",
+          "type": "core::integer::u16",
+          "key": false
+        }
+      ],
+      "class_hash": "0x6d1918fb081299a50a05595fc007af8917e848fd45f0c0f99cf3d179317fe03",
+      "tag": "bloc_duel-Pyramid",
+      "selector": "0x7c9bf0aa3086672e02c39095954ca257e9057e3f596593fa549edc5fbf7289b"
     }
   ],
+  "events": [],
   "external_contracts": [],
   "abis": [
     {
-      "type": "enum",
-      "name": "bloc_duel::models::Direction",
-      "variants": [
-        {
-          "name": "Left",
-          "type": "()"
-        },
-        {
-          "name": "Right",
-          "type": "()"
-        },
-        {
-          "name": "Up",
-          "type": "()"
-        },
-        {
-          "name": "Down",
-          "type": "()"
-        }
-      ]
-    },
-    {
       "type": "struct",
-      "name": "bloc_duel::models::DirectionsAvailable",
+      "name": "bloc_duel::models::game::Game",
       "members": [
         {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "directions",
-          "type": "core::array::Array::<bloc_duel::models::Direction>"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "bloc_duel::models::DirectionsAvailableValue",
-      "members": [
-        {
-          "name": "directions",
-          "type": "core::array::Array::<bloc_duel::models::Direction>"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "bloc_duel::models::Moves",
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "remaining",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "last_direction",
-          "type": "core::option::Option::<bloc_duel::models::Direction>"
-        },
-        {
-          "name": "can_move",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "bloc_duel::models::MovesValue",
-      "members": [
-        {
-          "name": "remaining",
-          "type": "core::integer::u8"
-        },
-        {
-          "name": "last_direction",
-          "type": "core::option::Option::<bloc_duel::models::Direction>"
-        },
-        {
-          "name": "can_move",
-          "type": "core::bool"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "bloc_duel::models::Position",
-      "members": [
-        {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
-        },
-        {
-          "name": "vec",
-          "type": "bloc_duel::models::Vec2"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "bloc_duel::models::PositionValue",
-      "members": [
-        {
-          "name": "vec",
-          "type": "bloc_duel::models::Vec2"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "bloc_duel::models::Vec2",
-      "members": [
-        {
-          "name": "x",
+          "name": "game_id",
           "type": "core::integer::u32"
         },
         {
-          "name": "y",
-          "type": "core::integer::u32"
+          "name": "player_one",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "player_two",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "current_player",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "age",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "phase",
+          "type": "bloc_duel::types::GamePhase"
+        },
+        {
+          "name": "agi_one",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "agi_two",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "escalation",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "winner",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "win_condition",
+          "type": "bloc_duel::types::WinCondition"
+        },
+        {
+          "name": "seed",
+          "type": "core::felt252"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "bloc_duel::models::game::GameValue",
+      "members": [
+        {
+          "name": "player_one",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "player_two",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "current_player",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "age",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "phase",
+          "type": "bloc_duel::types::GamePhase"
+        },
+        {
+          "name": "agi_one",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "agi_two",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "escalation",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "winner",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "win_condition",
+          "type": "bloc_duel::types::WinCondition"
+        },
+        {
+          "name": "seed",
+          "type": "core::felt252"
         }
       ]
     },
     {
       "type": "event",
-      "name": "bloc_duel::models::m_DirectionsAvailable::Event",
+      "name": "bloc_duel::models::game::m_Game::Event",
       "kind": "enum",
       "variants": []
     },
     {
+      "type": "struct",
+      "name": "bloc_duel::models::hero_pool::HeroPool",
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "hero_0",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "hero_1",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "hero_2",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "hero_0_taken",
+          "type": "core::bool"
+        },
+        {
+          "name": "hero_1_taken",
+          "type": "core::bool"
+        },
+        {
+          "name": "hero_2_taken",
+          "type": "core::bool"
+        },
+        {
+          "name": "used_mask",
+          "type": "core::integer::u16"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "bloc_duel::models::hero_pool::HeroPoolValue",
+      "members": [
+        {
+          "name": "hero_0",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "hero_1",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "hero_2",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "hero_0_taken",
+          "type": "core::bool"
+        },
+        {
+          "name": "hero_1_taken",
+          "type": "core::bool"
+        },
+        {
+          "name": "hero_2_taken",
+          "type": "core::bool"
+        },
+        {
+          "name": "used_mask",
+          "type": "core::integer::u16"
+        }
+      ]
+    },
+    {
       "type": "event",
-      "name": "bloc_duel::models::m_Moves::Event",
+      "name": "bloc_duel::models::hero_pool::m_HeroPool::Event",
       "kind": "enum",
       "variants": []
     },
     {
+      "type": "struct",
+      "name": "bloc_duel::models::pending_choice::PendingChoice",
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "active",
+          "type": "core::bool"
+        },
+        {
+          "name": "player_index",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "option_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "option_0",
+          "type": "bloc_duel::types::SystemType"
+        },
+        {
+          "name": "option_1",
+          "type": "bloc_duel::types::SystemType"
+        },
+        {
+          "name": "option_2",
+          "type": "bloc_duel::types::SystemType"
+        },
+        {
+          "name": "option_3",
+          "type": "bloc_duel::types::SystemType"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "bloc_duel::models::pending_choice::PendingChoiceValue",
+      "members": [
+        {
+          "name": "active",
+          "type": "core::bool"
+        },
+        {
+          "name": "player_index",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "option_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "option_0",
+          "type": "bloc_duel::types::SystemType"
+        },
+        {
+          "name": "option_1",
+          "type": "bloc_duel::types::SystemType"
+        },
+        {
+          "name": "option_2",
+          "type": "bloc_duel::types::SystemType"
+        },
+        {
+          "name": "option_3",
+          "type": "bloc_duel::types::SystemType"
+        }
+      ]
+    },
+    {
       "type": "event",
-      "name": "bloc_duel::models::m_Position::Event",
+      "name": "bloc_duel::models::pending_choice::m_PendingChoice::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "struct",
+      "name": "bloc_duel::models::player_state::PlayerState",
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "player_index",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "address",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "capital",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "energy_prod",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "materials_prod",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "compute_prod",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "compute_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "finance_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "cyber_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "diplomacy_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "compute_bonus",
+          "type": "core::bool"
+        },
+        {
+          "name": "finance_bonus",
+          "type": "core::bool"
+        },
+        {
+          "name": "cyber_bonus",
+          "type": "core::bool"
+        },
+        {
+          "name": "diplomacy_bonus",
+          "type": "core::bool"
+        },
+        {
+          "name": "made_system_choice",
+          "type": "core::bool"
+        },
+        {
+          "name": "hero_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "played_cards",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "bloc_duel::models::player_state::PlayerStateValue",
+      "members": [
+        {
+          "name": "address",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "capital",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "energy_prod",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "materials_prod",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "compute_prod",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "compute_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "finance_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "cyber_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "diplomacy_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "compute_bonus",
+          "type": "core::bool"
+        },
+        {
+          "name": "finance_bonus",
+          "type": "core::bool"
+        },
+        {
+          "name": "cyber_bonus",
+          "type": "core::bool"
+        },
+        {
+          "name": "diplomacy_bonus",
+          "type": "core::bool"
+        },
+        {
+          "name": "made_system_choice",
+          "type": "core::bool"
+        },
+        {
+          "name": "hero_count",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "played_cards",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "bloc_duel::models::player_state::m_PlayerState::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "struct",
+      "name": "bloc_duel::models::pyramid::Pyramid",
+      "members": [
+        {
+          "name": "game_id",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "slot_0",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_1",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_2",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_3",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_4",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_5",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_6",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_7",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_8",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_9",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "taken_mask",
+          "type": "core::integer::u16"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "bloc_duel::models::pyramid::PyramidValue",
+      "members": [
+        {
+          "name": "slot_0",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_1",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_2",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_3",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_4",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_5",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_6",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_7",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_8",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "slot_9",
+          "type": "core::integer::u8"
+        },
+        {
+          "name": "taken_mask",
+          "type": "core::integer::u16"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "bloc_duel::models::pyramid::m_Pyramid::Event",
       "kind": "enum",
       "variants": []
     },
@@ -278,18 +917,98 @@
       "items": [
         {
           "type": "function",
-          "name": "spawn",
+          "name": "create_game",
           "inputs": [],
+          "outputs": [
+            {
+              "type": "core::integer::u32"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "join_game",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u32"
+            }
+          ],
           "outputs": [],
           "state_mutability": "external"
         },
         {
           "type": "function",
-          "name": "move",
+          "name": "play_card",
           "inputs": [
             {
-              "name": "direction",
-              "type": "bloc_duel::models::Direction"
+              "name": "game_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "position",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "discard_card",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "position",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "invoke_hero",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "hero_slot",
+              "type": "core::integer::u8"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "choose_system_bonus",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "symbol",
+              "type": "bloc_duel::types::SystemType"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "next_age",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u32"
             }
           ],
           "outputs": [],
@@ -315,34 +1034,78 @@
       ]
     },
     {
-      "type": "struct",
-      "name": "bloc_duel::systems::actions::actions::Moved",
-      "members": [
+      "type": "enum",
+      "name": "bloc_duel::types::GamePhase",
+      "variants": [
         {
-          "name": "player",
-          "type": "core::starknet::contract_address::ContractAddress"
+          "name": "Lobby",
+          "type": "()"
         },
         {
-          "name": "direction",
-          "type": "bloc_duel::models::Direction"
-        }
-      ]
-    },
-    {
-      "type": "struct",
-      "name": "bloc_duel::systems::actions::actions::MovedValue",
-      "members": [
+          "name": "Drafting",
+          "type": "()"
+        },
         {
-          "name": "direction",
-          "type": "bloc_duel::models::Direction"
+          "name": "AgeTransition",
+          "type": "()"
+        },
+        {
+          "name": "GameOver",
+          "type": "()"
         }
       ]
     },
     {
-      "type": "event",
-      "name": "bloc_duel::systems::actions::actions::e_Moved::Event",
-      "kind": "enum",
-      "variants": []
+      "type": "enum",
+      "name": "bloc_duel::types::SystemType",
+      "variants": [
+        {
+          "name": "None",
+          "type": "()"
+        },
+        {
+          "name": "Compute",
+          "type": "()"
+        },
+        {
+          "name": "Finance",
+          "type": "()"
+        },
+        {
+          "name": "Cyber",
+          "type": "()"
+        },
+        {
+          "name": "Diplomacy",
+          "type": "()"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "name": "bloc_duel::types::WinCondition",
+      "variants": [
+        {
+          "name": "None",
+          "type": "()"
+        },
+        {
+          "name": "AgiBreakthrough",
+          "type": "()"
+        },
+        {
+          "name": "EscalationDominance",
+          "type": "()"
+        },
+        {
+          "name": "SystemsDominance",
+          "type": "()"
+        },
+        {
+          "name": "Points",
+          "type": "()"
+        }
+      ]
     },
     {
       "type": "constructor",
@@ -473,20 +1236,6 @@
     },
     {
       "type": "enum",
-      "name": "core::option::Option::<bloc_duel::models::Direction>",
-      "variants": [
-        {
-          "name": "Some",
-          "type": "bloc_duel::models::Direction"
-        },
-        {
-          "name": "None",
-          "type": "()"
-        }
-      ]
-    },
-    {
-      "type": "enum",
       "name": "core::option::Option::<core::integer::u32>",
       "variants": [
         {
@@ -568,41 +1317,6 @@
       "type": "interface",
       "name": "dojo::contract::interface::IContract",
       "items": []
-    },
-    {
-      "type": "struct",
-      "name": "dojo::event::event::EventDef",
-      "members": [
-        {
-          "name": "name",
-          "type": "core::byte_array::ByteArray"
-        },
-        {
-          "name": "layout",
-          "type": "dojo::meta::layout::Layout"
-        },
-        {
-          "name": "schema",
-          "type": "dojo::meta::introspect::Struct"
-        }
-      ]
-    },
-    {
-      "type": "interface",
-      "name": "dojo::event::interface::IEvent",
-      "items": [
-        {
-          "type": "function",
-          "name": "definition",
-          "inputs": [],
-          "outputs": [
-            {
-              "type": "dojo::event::event::EventDef"
-            }
-          ],
-          "state_mutability": "view"
-        }
-      ]
     },
     {
       "type": "interface",
@@ -2178,8 +2892,8 @@
       "name": "ensure_abi",
       "inputs": [
         {
-          "name": "event",
-          "type": "bloc_duel::systems::actions::actions::Moved"
+          "name": "model",
+          "type": "bloc_duel::models::pyramid::Pyramid"
         }
       ],
       "outputs": [],
@@ -2198,7 +2912,7 @@
       "inputs": [
         {
           "name": "value",
-          "type": "bloc_duel::systems::actions::actions::MovedValue"
+          "type": "bloc_duel::models::pyramid::PyramidValue"
         }
       ],
       "outputs": [],

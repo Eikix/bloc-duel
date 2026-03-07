@@ -15,8 +15,8 @@ export const ALL_SYSTEM_TYPES: SystemSymbol[] = [
 ]
 
 export const SYSTEM_BONUS_LABELS: Record<SystemSymbol, string> = {
-  COMPUTE: '🖥️ AI cards cost −1 each resource',
-  CYBER: '⚔️ +2 escalation now',
-  DIPLOMACY: '🕊️ Reset escalation to 0',
-  FINANCE: '💰 Sell value ×2',
+  COMPUTE: '🖥️ +2 compute production',
+  CYBER: '⚔️ +2 energy production',
+  DIPLOMACY: '🕊️ +2 materials production',
+  FINANCE: '💰 +3 capital on income',
 }

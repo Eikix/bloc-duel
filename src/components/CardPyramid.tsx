@@ -59,11 +59,11 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
               const avail = isAvailable(node.position, pyramid)
               const selected = selectedCard === node.position
 
-              const isFreeViaChain = node.card.chainFrom
+              const isFreeViaChain = node.card.chainFrom !== undefined
                 ? player.playedCards.includes(node.card.chainFrom)
                 : false
 
-              const effectiveCost = getEffectiveCost(node.card, player)
+              const effectiveCost = getEffectiveCost(node.card)
               const affordable = isFreeViaChain || canAfford(player, effectiveCost)
 
               return (

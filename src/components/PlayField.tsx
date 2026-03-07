@@ -49,7 +49,7 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
                 `}
                 title={`${card!.name} (${card!.type})`}
               >
-                {card!.chainFrom ? '\u26D3 ' : ''}{card!.name.split(' ')[0]}
+                {card!.chainFrom !== undefined ? '\u26D3 ' : ''}{card!.name.split(' ')[0]}
               </span>
             ))}
           </div>

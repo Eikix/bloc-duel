@@ -11,6 +11,8 @@ interface PlayerStatsBarProps {
 export default function PlayerStatsBar({ playerIndex, isBottom }: PlayerStatsBarProps) {
   const player = useGameStore((s) => s.players[playerIndex])
   const currentPlayer = useGameStore((s) => s.currentPlayer)
+  const localPlayerIndex = useGameStore((s) => s.localPlayerIndex)
+  const isCurrentUserTurn = useGameStore((s) => s.isCurrentUserTurn)
   const phase = useGameStore((s) => s.phase)
   const availableHeroes = useGameStore((s) => s.availableHeroes)
   const toggleHeroPicker = useGameStore((s) => s.toggleHeroPicker)
@@ -24,7 +26,7 @@ export default function PlayerStatsBar({ playerIndex, isBottom }: PlayerStatsBar
   const dotColor = isAtlantic ? 'bg-atlantic' : 'bg-continental'
 
   const prod = player.production
-  const surcharge = player.heroes.length * 2
+  const surcharge = player.heroCount * 2
   const hasAffordableHero = availableHeroes.some(h => canAfford(player, h.cost, surcharge))
 
   return (
@@ -83,17 +85,17 @@ export default function PlayerStatsBar({ playerIndex, isBottom }: PlayerStatsBar
       </div>
 
       {/* Heroes count */}
-      <div className="hidden md:flex items-center gap-1 shrink-0">
-        <span className="font-mono text-[10px] text-ink-faint">
-          {player.heroes.length > 0 ? `${player.heroes.length} hero${player.heroes.length > 1 ? 'es' : ''}` : ''}
-        </span>
-      </div>
+        <div className="hidden md:flex items-center gap-1 shrink-0">
+          <span className="font-mono text-[10px] text-ink-faint">
+            {player.heroCount > 0 ? `${player.heroCount} hero${player.heroCount > 1 ? 'es' : ''}` : ''}
+          </span>
+        </div>
 
       {/* Spacer */}
       <div className="flex-1" />
 
       {/* Invoke Hero button (bottom player only) */}
-      {isBottom && phase === 'DRAFTING' && availableHeroes.length > 0 && (
+      {isBottom && localPlayerIndex === playerIndex && isCurrentUserTurn && phase === 'DRAFTING' && availableHeroes.length > 0 && (
         <button
           onClick={toggleHeroPicker}
           disabled={!hasAffordableHero}
