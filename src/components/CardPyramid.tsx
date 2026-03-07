@@ -34,11 +34,13 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
 
   if (pyramid.length === 0) return null
 
+  const pyramidKey = pyramid.map((node) => `${node.position}:${node.card.id}`).join('|')
+
   return (
-    <div className="flex flex-col items-center">
+    <div key={pyramidKey} className="flex flex-col items-center">
       {ROWS.map((positions, rowIndex) => (
         <div
-          key={rowIndex}
+          key={`${pyramidKey}-${rowIndex}`}
           className={`flex justify-center gap-1 sm:gap-1.5 md:gap-2 ${rowIndex > 0 ? ROW_OVERLAP : ''}`}
           style={{ zIndex: ROW_Z[rowIndex] }}
         >
@@ -50,7 +52,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
               if (node.taken) {
                 return (
                   <div
-                    key={`empty-${pos}`}
+                    key={`${pyramidKey}-empty-${pos}`}
                     className="w-[4.5rem] h-24 sm:w-[5rem] sm:h-[6.75rem] md:w-24 md:h-[8.5rem] rounded-lg border border-dashed border-border/30 opacity-15"
                   />
                 )
@@ -68,7 +70,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
 
               return (
                 <Card
-                  key={node.card.id}
+                  key={`${pyramidKey}-${node.card.id}`}
                   node={node}
                   available={avail}
                   selected={selected}
