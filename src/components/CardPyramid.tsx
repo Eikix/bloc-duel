@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { useGameStore, canAfford } from '../store/gameStore'
+import { useGameStore, canAfford, getEffectiveCost } from '../store/gameStore'
 import { isAvailable } from '../game/pyramid'
 import Card from './Card'
 import type { DropRefs } from './Card'
@@ -63,7 +63,8 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                 ? player.playedCards.includes(node.card.chainFrom)
                 : false
 
-              const affordable = isFreeViaChain || canAfford(player, node.card.cost)
+              const effectiveCost = getEffectiveCost(node.card, player)
+              const affordable = isFreeViaChain || canAfford(player, effectiveCost)
 
               return (
                 <Card
@@ -73,6 +74,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                   selected={selected}
                   affordable={affordable}
                   isFreeViaChain={isFreeViaChain}
+                  effectiveCost={effectiveCost}
                   onSelect={selectCard}
                   dropRefs={dropRefs}
                   onPlay={onPlay}

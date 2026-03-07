@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useGameStore, canAfford, getSellValue } from '../store/gameStore'
+import { useGameStore, canAfford, getSellValue, getEffectiveCost } from '../store/gameStore'
 import CardPyramid from '../components/CardPyramid'
 import AGITrack from '../components/AGITrack'
 import EscalationTrack from '../components/EscalationTrack'
@@ -58,11 +58,15 @@ export function Game() {
     ? current.playedCards.includes(selectedNode.card.chainFrom)
     : false
 
+  const selectedEffectiveCost = selectedNode
+    ? getEffectiveCost(selectedNode.card, current)
+    : undefined
+
   const canAffordCard = selectedNode
-    ? isFreeViaChain || canAfford(current, selectedNode.card.cost)
+    ? isFreeViaChain || canAfford(current, selectedEffectiveCost!)
     : false
 
-  const sellValue = getSellValue(age)
+  const sellValue = getSellValue(age, current)
 
   // Determine winner for game over screen
   const getVictoryInfo = () => {
@@ -156,6 +160,7 @@ export function Game() {
             card={selectedNode.card}
             affordable={canAffordCard}
             isFreeViaChain={isFreeViaChain}
+            effectiveCost={selectedEffectiveCost}
             sellValue={sellValue}
             onPlay={() => { playCard(); }}
             onDiscard={() => { discardCard(); }}
