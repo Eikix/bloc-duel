@@ -1025,7 +1025,7 @@ export function Game({ onBackHome }: GameProps) {
                     compact
                   />
 
-                  <div className="relative my-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/75 bg-[radial-gradient(circle_at_center,rgba(47,109,246,0.14),rgba(255,255,255,0)_42%),linear-gradient(180deg,rgba(255,255,255,0.74),rgba(228,236,245,0.58))] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
+                  <div className="relative my-3 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/75 bg-[radial-gradient(circle_at_center,rgba(47,109,246,0.14),rgba(255,255,255,0)_42%),linear-gradient(180deg,rgba(255,255,255,0.74),rgba(228,236,245,0.58))] px-2 py-3 md:px-4 md:py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),transparent_35%,rgba(17,32,56,0.04))]" />
                     <CardPyramid
                       key={`${selectedGameId ?? 'none'}-${age}`}

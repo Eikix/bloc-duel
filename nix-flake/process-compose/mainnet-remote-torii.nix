@@ -25,11 +25,34 @@
               PROJECT_DIR="$PC_PROJ_DIR"
             fi
             cd "$PROJECT_DIR"
+            NPM="${pkgs.nodejs_20}/bin/npm"
+            NODE="${pkgs.nodejs_20}/bin/node"
+            STAMP_FILE="node_modules/.bloc-duel-node-version"
+            TARGET_NODE_VERSION=$("$NODE" --version)
+            REINSTALL_REASON=""
+
             if [ ! -d node_modules ]; then
-              echo "📦 Installing npm dependencies..."
-              ${pkgs.nodejs_20}/bin/npm install
+              REINSTALL_REASON="node_modules is missing"
+            elif [ ! -f "$STAMP_FILE" ]; then
+              REINSTALL_REASON="node_modules was not installed by the Nix launcher"
             else
-              echo "✅ node_modules already exists, skipping install"
+              INSTALLED_NODE_VERSION=$(<"$STAMP_FILE")
+              if [ "$INSTALLED_NODE_VERSION" != "$TARGET_NODE_VERSION" ]; then
+                REINSTALL_REASON="node_modules was built with Node.js $INSTALLED_NODE_VERSION (expected $TARGET_NODE_VERSION)"
+              elif ! "$NPM" ls --depth=0 > /dev/null 2>&1; then
+                REINSTALL_REASON="npm dependency tree is incomplete or out of sync"
+              fi
+            fi
+
+            if [ -n "$REINSTALL_REASON" ]; then
+              echo "🔄 $REINSTALL_REASON"
+              echo "📦 Installing npm dependencies with Node.js $TARGET_NODE_VERSION..."
+              ${pkgs.coreutils}/bin/rm -rf node_modules
+              "$NPM" install --include=dev
+              ${pkgs.coreutils}/bin/mkdir -p node_modules
+              printf '%s\n' "$TARGET_NODE_VERSION" > "$STAMP_FILE"
+            else
+              echo "✅ npm dependencies are already in sync"
             fi
           ''}";
           availability.restart = "no";

@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion'
-import type { Card, CardType, ResourceCost } from '../game/cards'
+import type { Card, ResourceCost } from '../game/cards'
 import { getCardById } from '../game/cards'
-import { formatCost, totalCost, RESOURCE_ICONS } from '../game/format'
+import { formatCost, totalCost } from '../game/format'
+import { buildCardEffectEntries, TYPE_STYLES } from '../game/cardVisuals'
+import CardArtwork from './CardArtwork'
 
 interface CardZoomProps {
   card: Card
@@ -14,33 +16,6 @@ interface CardZoomProps {
   onClose: () => void
 }
 
-const TYPE_STYLES: Record<CardType, { stripe: string; bg: string; badge: string; text: string }> = {
-  AI: {
-    stripe: 'bg-blue-500',
-    bg: 'bg-[linear-gradient(180deg,rgba(240,247,255,0.98),rgba(217,231,252,0.95))]',
-    badge: 'bg-blue-500 text-white',
-    text: 'text-blue-800',
-  },
-  ECONOMY: {
-    stripe: 'bg-amber-500',
-    bg: 'bg-[linear-gradient(180deg,rgba(255,251,239,0.98),rgba(251,235,189,0.94))]',
-    badge: 'bg-amber-500 text-white',
-    text: 'text-amber-900',
-  },
-  MILITARY: {
-    stripe: 'bg-red-500',
-    bg: 'bg-[linear-gradient(180deg,rgba(255,242,239,0.98),rgba(250,218,212,0.94))]',
-    badge: 'bg-red-500 text-white',
-    text: 'text-red-800',
-  },
-  SYSTEM: {
-    stripe: 'bg-emerald-500',
-    bg: 'bg-[linear-gradient(180deg,rgba(239,255,247,0.98),rgba(213,244,229,0.94))]',
-    badge: 'bg-emerald-500 text-white',
-    text: 'text-emerald-800',
-  },
-}
-
 export default function CardZoom({
   card, affordable, isFreeViaChain, effectiveCost, sellValue,
   onPlay, onDiscard, onClose,
@@ -50,17 +25,7 @@ export default function CardZoom({
   const isFree = totalCost(displayCost) === 0
   const chainFromName = card.chainFrom !== undefined ? getCardById(card.chainFrom).name : null
   const chainToName = card.chainTo !== undefined ? getCardById(card.chainTo).name : null
-
-  const effects: { label: string; value: string }[] = []
-  const effect = card.effect
-  if (effect.agi) effects.push({ label: 'AGI gain', value: `+${effect.agi}` })
-  if (effect.escalation) effects.push({ label: 'Escalation shift', value: `${effect.escalation > 0 ? '+' : ''}${effect.escalation}` })
-  if (effect.capital) effects.push({ label: 'Immediate capital', value: `+${effect.capital}` })
-  if (effect.energyPerTurn) effects.push({ label: `${RESOURCE_ICONS.energy} Energy income`, value: `+${effect.energyPerTurn}` })
-  if (effect.materialsPerTurn) effects.push({ label: `${RESOURCE_ICONS.materials} Materials income`, value: `+${effect.materialsPerTurn}` })
-  if (effect.computePerTurn) effects.push({ label: `${RESOURCE_ICONS.compute} Compute income`, value: `+${effect.computePerTurn}` })
-  if (effect.symbol) effects.push({ label: 'System unlocked', value: effect.symbol })
-  if (card.symbol) effects.push({ label: 'System unlocked', value: card.symbol })
+  const effects = buildCardEffectEntries(card)
 
   return (
     <motion.div
@@ -76,34 +41,66 @@ export default function CardZoom({
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.94, opacity: 0, y: 16 }}
         transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-        className={`relative w-full max-w-lg overflow-hidden rounded-[30px] border border-white/75 ${style.bg} shadow-[0_38px_80px_rgba(17,32,56,0.28)]`}
+        className={`relative w-full max-w-xl overflow-hidden rounded-[30px] border ${style.frame} bg-slate-950 shadow-[0_38px_80px_rgba(17,32,56,0.28)]`}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className={`h-2.5 ${style.stripe}`} />
-        <div className="absolute inset-0 bg-[linear-gradient(155deg,rgba(255,255,255,0.3),transparent_45%,rgba(17,32,56,0.05))] pointer-events-none" />
+        <div className={`h-2.5 ${style.accent}`} />
 
-        <div className="relative px-5 py-5 md:px-6 md:py-6">
-          <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="relative h-[23rem] overflow-hidden sm:h-[26rem]">
+          <CardArtwork
+            card={card}
+            className="h-full w-full"
+            imgClassName="brightness-[1.1] saturate-[1.06] contrast-[1.03]"
+            fallbackClassName={style.fallback}
+            loading="eager"
+          />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[linear-gradient(180deg,rgba(4,10,18,0.54),rgba(4,10,18,0.14)_58%,transparent)]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[52%] bg-[linear-gradient(180deg,transparent,rgba(4,10,18,0.18)_18%,rgba(4,10,18,0.74)_62%,rgba(4,10,18,0.92)_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.18),transparent_28%,rgba(4,10,18,0.24)_100%)]" />
+
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-4 px-5 py-5 md:px-6 md:py-6">
             <div>
-              <p className="section-label mb-2">Dossier inspection</p>
-              <h3 className={`font-display text-3xl font-black leading-[0.98] ${style.text}`}>{card.name}</h3>
+              <p className="section-label mb-2 text-white/68">Dossier inspection</p>
+              <div className="flex flex-wrap gap-2">
+                <span className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.18em] shadow-[0_6px_16px_rgba(0,0,0,0.22)] ${style.chip}`}>
+                  {card.type}
+                </span>
+                <span className="rounded-full border border-white/14 bg-black/45 px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-white/88 backdrop-blur-md">
+                  Age {card.age}
+                </span>
+              </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2">
-              <span className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.18em] ${style.badge}`}>
-                {card.type}
-              </span>
-              <span className="rounded-full bg-white/78 px-3 py-1 font-mono text-sm font-bold text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
-                {isFreeViaChain ? 'FREE via chain' : isFree ? 'Free' : formatCost(displayCost)}
-              </span>
-            </div>
+            <span className="rounded-full border border-white/14 bg-black/45 px-3 py-1 font-mono text-sm font-bold text-white/92 backdrop-blur-md shadow-[0_6px_16px_rgba(0,0,0,0.22)]">
+              {isFreeViaChain ? 'FREE via chain' : isFree ? 'FREE' : formatCost(displayCost)}
+            </span>
           </div>
 
+          <div className="absolute inset-x-0 bottom-0 px-5 pb-5 md:px-6 md:pb-6">
+            <div className="rounded-[24px] border border-white/14 bg-black/24 p-4 backdrop-blur-[10px] shadow-[0_18px_32px_rgba(0,0,0,0.2)]">
+              <h3 className={`font-display text-3xl font-black leading-[0.98] drop-shadow-[0_2px_12px_rgba(0,0,0,0.4)] ${style.text}`}>{card.name}</h3>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {card.chainFrom !== undefined && (
+                  <span className="rounded-full border border-violet-200/30 bg-violet-400/18 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-violet-50">Chain upgrade</span>
+                )}
+                {card.chainTo !== undefined && (
+                  <span className="rounded-full border border-cyan-200/30 bg-cyan-400/18 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-50">Future link</span>
+                )}
+                {isFreeViaChain && (
+                  <span className="rounded-full border border-emerald-200/30 bg-emerald-400/18 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-50">Deploy free</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`relative px-5 py-5 md:px-6 md:py-6 ${style.surface}`}>
           <div className="mb-4 grid gap-3 sm:grid-cols-2">
             {effects.map((fx) => (
               <div
                 key={`${fx.label}-${fx.value}`}
-                className="rounded-2xl border border-white/76 bg-white/62 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+                className="rounded-2xl border border-white/76 bg-white/68 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]"
               >
                 <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-faint">{fx.label}</p>
                 <p className="mt-1 font-display text-lg font-black text-ink">{fx.value}</p>
