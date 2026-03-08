@@ -13,7 +13,7 @@ const ROWS: number[][] = [
 ]
 
 const ROW_Z: Record<number, number> = { 0: 10, 1: 20, 2: 30, 3: 40 }
-const ROW_OVERLAP = '-mt-7 sm:-mt-10 md:-mt-11 lg:-mt-12 xl:-mt-[3.25rem] 2xl:-mt-[3.6rem]'
+const ROW_OVERLAP = '-mt-6 sm:-mt-8 md:-mt-9 lg:-mt-10 xl:-mt-11 2xl:-mt-[3.25rem]'
 
 interface CardPyramidProps {
   dropRefs?: DropRefs
@@ -41,7 +41,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
       {ROWS.map((positions, rowIndex) => (
         <motion.div
           key={`${pyramidKey}-${rowIndex}`}
-          className={`flex justify-center gap-1 sm:gap-2 md:gap-2.5 xl:gap-3 2xl:gap-3.5 ${rowIndex > 0 ? ROW_OVERLAP : ''}`}
+          className={`flex justify-center gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 xl:gap-2.5 2xl:gap-3 ${rowIndex > 0 ? ROW_OVERLAP : ''}`}
           style={{ zIndex: ROW_Z[rowIndex] }}
           initial={false}
           animate={{ opacity: 1, y: 0 }}
@@ -56,7 +56,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                 return (
                   <div
                     key={`${pyramidKey}-empty-${pos}`}
-                    className="relative h-[6.6rem] w-[4.65rem] rounded-[22px] border border-dashed border-slate-300/80 bg-white/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] sm:h-[8.35rem] sm:w-[5.95rem] md:h-[8.85rem] md:w-[6.3rem] lg:h-[9.4rem] lg:w-[6.7rem] xl:h-[10rem] xl:w-[7.1rem] 2xl:h-[10.7rem] 2xl:w-[7.6rem]"
+                    className="relative h-[6.1rem] w-[4.3rem] rounded-[22px] border border-dashed border-slate-300/80 bg-white/22 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] sm:h-[7.15rem] sm:w-[5.05rem] md:h-[7.6rem] md:w-[5.35rem] lg:h-[8rem] lg:w-[5.7rem] xl:h-[8.45rem] xl:w-[6rem] 2xl:h-[9.35rem] 2xl:w-[6.65rem]"
                   >
                     <div className="absolute inset-2 rounded-[14px] border border-white/40 bg-white/18" />
                   </div>

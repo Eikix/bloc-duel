@@ -942,8 +942,8 @@ export function Game({ onBackHome }: GameProps) {
             </div>
           )}
 
-          <div className="flex min-h-full w-full flex-col gap-3 md:h-full md:overflow-hidden">
-            <section className="hud-compact-bar rounded-[20px] px-2.5 py-1.5 md:px-3 md:py-1.5">
+          <div className="flex min-h-full w-full flex-col gap-2.5 md:h-full md:overflow-hidden">
+            <section className="hud-compact-bar rounded-[18px] px-2 py-1.5 md:px-2.5 md:py-1.5">
               <div className="flex items-center gap-2">
                 <div className="flex shrink-0 items-center gap-2">
                   {(onBackHome || selectedGameId !== null) && (
@@ -1061,9 +1061,9 @@ export function Game({ onBackHome }: GameProps) {
               </div>
             </section>
 
-            <div className="min-h-0 grid flex-1 gap-3 xl:grid-cols-[288px_minmax(0,1fr)]">
-              <aside className="hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto xl:pr-1">
-                <div className="hud-panel rounded-[26px] p-3">
+            <div className="min-h-0 grid flex-1 gap-3 xl:grid-cols-[248px_minmax(0,1fr)] 2xl:grid-cols-[288px_minmax(0,1fr)]">
+              <aside className="hidden min-h-0 xl:flex xl:flex-col xl:gap-2.5 xl:overflow-y-auto xl:pr-1">
+                <div className="hud-panel rounded-[24px] p-2.5 2xl:rounded-[26px] 2xl:p-3">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <p className="section-label text-white/50">{HUD_GLYPHS.points} How to win</p>
                     <span className="hud-inline-chip text-[10px] text-white/68">
@@ -1129,12 +1129,12 @@ export function Game({ onBackHome }: GameProps) {
                 />
               </aside>
 
-              <section className="table-surface table-surface-battle relative min-h-0 overflow-visible rounded-[34px] px-3 py-3 md:overflow-hidden md:px-6 md:py-5">
+              <section className="table-surface table-surface-battle relative min-h-0 overflow-visible rounded-[30px] px-2.5 py-2.5 md:overflow-hidden md:px-4 md:py-4 xl:px-5">
                 <div className="relative z-10 flex h-full min-h-0 flex-col">
                   {canOpenHeroPicker && (
                     <button
                       onClick={toggleHeroPicker}
-                      className={`mb-3 flex items-center justify-between gap-3 rounded-[24px] border px-4 py-3 text-left shadow-[0_18px_32px_rgba(245,158,11,0.16)] transition hover:-translate-y-0.5 ${
+                      className={`mb-2.5 flex items-center justify-between gap-2.5 rounded-[22px] border px-3 py-2.5 text-left shadow-[0_18px_32px_rgba(245,158,11,0.16)] transition hover:-translate-y-0.5 xl:hidden ${
                         canInvokeHero
                           ? 'border-amber-300/80 bg-[linear-gradient(135deg,rgba(255,244,204,0.96),rgba(255,221,131,0.92))] text-amber-950'
                           : 'border-amber-200/60 bg-[linear-gradient(135deg,rgba(255,249,231,0.92),rgba(246,234,187,0.88))] text-amber-900'
@@ -1142,7 +1142,7 @@ export function Game({ onBackHome }: GameProps) {
                     >
                       <div className="min-w-0">
                         <p className="section-label text-amber-700/80">Alternative turn action</p>
-                        <p className="mt-1 font-display text-xl font-black leading-none">Invoke Hero instead of drafting</p>
+                        <p className="mt-1 font-display text-lg font-black leading-none 2xl:text-xl">Invoke Hero instead of drafting</p>
                         <p className="mt-1 font-mono text-[11px] text-amber-800/80">
                           {availableHeroes.length} of 3 hero option{availableHeroes.length === 1 ? '' : 's'} remain
                           {localHeroSurcharge > 0 ? ` • surcharge +${localHeroSurcharge}` : ''}
@@ -1164,9 +1164,9 @@ export function Game({ onBackHome }: GameProps) {
                     onInspectCard={inspectCard}
                   />
 
-                  <div className="relative my-3 flex min-h-0 flex-1 items-center justify-center overflow-x-auto overflow-y-hidden rounded-[30px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-2 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] md:my-4 md:overflow-hidden md:px-4 md:py-5">
+                  <div className="relative my-2.5 flex min-h-0 flex-1 items-center justify-center overflow-x-auto overflow-y-hidden rounded-[28px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-1.5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] md:my-3 md:overflow-hidden md:px-3 md:py-4">
                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_30%,rgba(8,18,34,0.12))]" />
-                    <div className="relative z-10 flex min-w-fit justify-center md:w-full">
+                    <div className="relative z-10 flex min-w-fit items-start gap-3 md:w-full md:justify-center">
                       <CardPyramid
                         key={`${selectedGameId ?? 'none'}-${age}`}
                         dropRefs={dropRefs}
@@ -1175,10 +1175,29 @@ export function Game({ onBackHome }: GameProps) {
                         onDiscard={(position) => void discardCardAt(position)}
                         onDragOverZone={setActiveDragZone}
                       />
+                      {canOpenHeroPicker && (
+                        <button
+                          onClick={toggleHeroPicker}
+                          className={`hidden w-32 shrink-0 flex-col rounded-[24px] border px-3 py-3 text-left shadow-[0_18px_32px_rgba(245,158,11,0.16)] transition hover:-translate-y-0.5 xl:flex ${
+                            canInvokeHero
+                              ? 'border-amber-300/80 bg-[linear-gradient(135deg,rgba(255,244,204,0.96),rgba(255,221,131,0.92))] text-amber-950'
+                              : 'border-amber-200/60 bg-[linear-gradient(135deg,rgba(255,249,231,0.92),rgba(246,234,187,0.88))] text-amber-900'
+                          }`}
+                        >
+                          <span className="section-label text-amber-700/80">Hero deck</span>
+                          <span className="mt-1 font-display text-base font-black leading-tight">
+                            {canInvokeHero ? 'Invoke hero' : 'View heroes'}
+                          </span>
+                          <span className="mt-2 font-mono text-[10px] leading-relaxed text-amber-800/80">
+                            {availableHeroes.length}/3 remain
+                            {localHeroSurcharge > 0 ? ` • +${localHeroSurcharge}` : ''}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
+                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px] 2xl:grid-cols-[minmax(0,1fr)_260px]">
                     <PlayField
                       ref={playFieldRef}
                       playerIndex={bottomPlayer}
