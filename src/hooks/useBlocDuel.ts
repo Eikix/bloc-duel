@@ -36,6 +36,7 @@ export function useBlocDuelLifecycle() {
   const [runtime, setRuntimeState] = useState<BlocDuelRuntime | null>(null)
   const [runtimeError, setRuntimeError] = useState<string | null>(null)
   const [isBootstrappingRuntime, setIsBootstrappingRuntime] = useState(true)
+  const [runtimeNonce, setRuntimeNonce] = useState(0)
   const initialSelectionApplied = useRef(false)
 
   const config = getDojoConfig()
@@ -52,6 +53,17 @@ export function useBlocDuelLifecycle() {
   const setLoadingGame = useGameStore((state) => state.setLoadingGame)
   const syncGames = useGameStore((state) => state.syncGames)
   const syncSnapshot = useGameStore((state) => state.syncSnapshot)
+
+  const reloadRuntime = useCallback(() => {
+    setIsBootstrappingRuntime(true)
+    setRuntimeError(null)
+    setRuntime(null)
+    setRuntimeState((current) => {
+      current?.toriiClient.free()
+      return null
+    })
+    setRuntimeNonce((value) => value + 1)
+  }, [setRuntime])
 
   const refreshGames = useCallback(async () => {
     if (!runtime) return
@@ -122,7 +134,7 @@ export function useBlocDuelLifecycle() {
       mounted = false
       currentRuntime?.toriiClient.free()
     }
-  }, [])
+  }, [runtimeNonce])
 
   useEffect(() => {
     if (initialSelectionApplied.current) return
@@ -267,6 +279,7 @@ export function useBlocDuelLifecycle() {
     isPending: Boolean(isPending),
     refreshGame,
     refreshGames,
+    reloadRuntime,
     runtime,
     runtimeError,
     runtimeReady: runtime !== null,

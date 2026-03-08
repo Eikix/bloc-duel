@@ -1,4 +1,5 @@
-import baseManifest from '../../contracts/manifest_dev.json'
+import devManifest from '../../contracts/manifest_dev.json'
+import mainnetManifest from '../../contracts/manifest_mainnet.json'
 
 const ACTIONS_TAG = 'bloc_duel-actions'
 const LOCAL_NODE_URL = 'http://127.0.0.1:5050'
@@ -6,6 +7,12 @@ const LOCAL_TORII_URL = 'http://127.0.0.1:8080'
 
 export type StarknetNetwork = 'katana' | 'sepolia' | 'mainnet'
 export type WalletMode = 'burner' | 'controller'
+type DojoManifestProfile = 'dev' | 'mainnet'
+
+const MANIFESTS = {
+  dev: devManifest,
+  mainnet: mainnetManifest,
+} as const
 
 const DEFAULT_RPC_URLS: Record<StarknetNetwork, string> = {
   katana: LOCAL_NODE_URL,
@@ -43,6 +50,19 @@ function normalizeNetworkHint(value: string | undefined): StarknetNetwork | unde
   }
 }
 
+function normalizeManifestProfile(value: string | undefined): DojoManifestProfile | undefined {
+  switch (value?.trim().toLowerCase()) {
+    case 'dev':
+    case 'local':
+    case 'katana':
+      return 'dev'
+    case 'mainnet':
+      return 'mainnet'
+    default:
+      return undefined
+  }
+}
+
 function inferNetwork(rpcUrlHint: string | undefined, toriiUrl: string): StarknetNetwork {
   const hintedNetwork = normalizeNetworkHint(
     pickEnv(
@@ -60,15 +80,8 @@ function inferNetwork(rpcUrlHint: string | undefined, toriiUrl: string): Starkne
   return 'mainnet'
 }
 
-function normalizeWalletMode(value: string | undefined): WalletMode | undefined {
-  switch (value?.trim().toLowerCase()) {
-    case 'burner':
-      return 'burner'
-    case 'controller':
-      return 'controller'
-    default:
-      return undefined
-  }
+function getWalletMode(network: StarknetNetwork): WalletMode {
+  return network === 'katana' ? 'burner' : 'controller'
 }
 
 function buildDojoConfig() {
@@ -88,13 +101,15 @@ function buildDojoConfig() {
   )
 
   const network = inferNetwork(rpcUrlHint, toriiUrl)
-  const rpcUrl = pickEnv(rpcUrlHint, DEFAULT_RPC_URLS[network])!
-  const walletMode = normalizeWalletMode(
+  const manifestProfile = normalizeManifestProfile(
     pickEnv(
-      import.meta.env.VITE_PUBLIC_WALLET_MODE,
-      import.meta.env.PUBLIC_WALLET_MODE,
+      import.meta.env.VITE_PUBLIC_DOJO_MANIFEST_PROFILE,
+      import.meta.env.PUBLIC_DOJO_MANIFEST_PROFILE,
     ),
-  ) ?? 'controller'
+  ) ?? (network === 'mainnet' ? 'mainnet' : 'dev')
+  const baseManifest = MANIFESTS[manifestProfile]
+  const rpcUrl = pickEnv(rpcUrlHint, DEFAULT_RPC_URLS[network])!
+  const walletMode = getWalletMode(network)
 
   const worldAddress = pickEnv(
     import.meta.env.VITE_PUBLIC_WORLD_ADDRESS,

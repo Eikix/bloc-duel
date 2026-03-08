@@ -1,6 +1,7 @@
 import type { SchemaType as ISchemaType } from "@dojoengine/sdk";
 
-import { CairoCustomEnum, BigNumberish } from 'starknet';
+import { CairoCustomEnum } from 'starknet';
+import type { BigNumberish } from 'starknet';
 
 // Type definition for `bloc_duel::models::Game` struct
 export interface Game {
@@ -222,13 +223,13 @@ export const schema: SchemaType = {
 		},
 	},
 };
-export enum ModelsMapping {
-	Game = 'bloc_duel-Game',
-	GamePhase = 'bloc_duel-GamePhase',
-	HeroPool = 'bloc_duel-HeroPool',
-	PendingChoice = 'bloc_duel-PendingChoice',
-	PlayerState = 'bloc_duel-PlayerState',
-	Pyramid = 'bloc_duel-Pyramid',
-	SystemType = 'bloc_duel-SystemType',
-	WinCondition = 'bloc_duel-WinCondition',
-}
+export const ModelsMapping = {
+	Game: 'bloc_duel-Game',
+	GamePhase: 'bloc_duel-GamePhase',
+	HeroPool: 'bloc_duel-HeroPool',
+	PendingChoice: 'bloc_duel-PendingChoice',
+	PlayerState: 'bloc_duel-PlayerState',
+	Pyramid: 'bloc_duel-Pyramid',
+	SystemType: 'bloc_duel-SystemType',
+	WinCondition: 'bloc_duel-WinCondition',
+} as const

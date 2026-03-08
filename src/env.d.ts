@@ -17,6 +17,8 @@ interface ImportMetaEnv {
   readonly PUBLIC_STARKNET_NETWORK?: string
   readonly VITE_PUBLIC_DEPLOY_TYPE?: string
   readonly PUBLIC_DEPLOY_TYPE?: string
+  readonly VITE_PUBLIC_DOJO_MANIFEST_PROFILE?: string
+  readonly PUBLIC_DOJO_MANIFEST_PROFILE?: string
   readonly VITE_PUBLIC_SLOT?: string
   readonly PUBLIC_SLOT?: string
 }

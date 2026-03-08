@@ -9,6 +9,7 @@
   relayPort = builtins.getEnv "BLOCDUEL_RELAY_PORT";
   webrtcPort = builtins.getEnv "BLOCDUEL_WEBRTC_PORT";
   websocketPort = builtins.getEnv "BLOCDUEL_WEBSOCKET_PORT";
+  grpcPort = builtins.getEnv "BLOCDUEL_GRPC_PORT";
 in {
   # Port configuration with defaults
   ports = {
@@ -17,6 +18,7 @@ in {
     relayPort = if relayPort == "" then 18090 else builtins.fromJSON relayPort;
     webrtcPort = if webrtcPort == "" then 18091 else builtins.fromJSON webrtcPort;
     websocketPort = if websocketPort == "" then 18092 else builtins.fromJSON websocketPort;
+    grpcPort = if grpcPort == "" then 50051 else builtins.fromJSON grpcPort;
   };
 
   # System utilities

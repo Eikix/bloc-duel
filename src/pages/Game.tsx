@@ -85,6 +85,7 @@ export function Game({ onBackHome }: GameProps) {
     isPending,
     refreshGame,
     refreshGames,
+    reloadRuntime,
     runtimeError,
     runtimeReady,
     switchBurner,
@@ -244,6 +245,10 @@ export function Game({ onBackHome }: GameProps) {
           <button
             onClick={() => {
               clearError()
+              if (!runtimeReady) {
+                reloadRuntime()
+                return
+              }
               void refreshGames()
               void refreshGame(selectedGameId)
             }}
@@ -330,7 +335,7 @@ export function Game({ onBackHome }: GameProps) {
                 <p className="section-label mb-2">War Room</p>
                 <h2 className="font-display text-3xl font-black text-ink md:text-4xl">Launch a new bloc skirmish</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted md:text-[15px]">
-                  Spin up a live contract-backed duel, claim a burner or controller seat, and share the mission id with your rival commander.
+                  Spin up a live contract-backed duel, claim a controller seat, and share the mission id with your rival commander.
                 </p>
               </div>
 

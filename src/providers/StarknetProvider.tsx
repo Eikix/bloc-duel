@@ -7,6 +7,8 @@ import { fetchKatanaAccounts, getBurnerAddress, pickBurnerIndex, rememberBurnerI
 import { getDojoConfig, type BlocDuelConfig } from '../dojo/config'
 import { BurnerWalletContext } from './burnerWallet'
 
+const KATANA_CHAIN_ID = '0x4b4154414e41'
+
 interface WalletSetup {
   chain: Chain
   connectors: Connector[]
@@ -24,8 +26,10 @@ interface BurnerConnectorSetup {
 function createKatanaChain(rpcUrl: string): Chain {
   return {
     ...devnet,
+    id: BigInt(KATANA_CHAIN_ID),
     name: 'Katana Local',
     network: 'katana',
+    testnet: true,
     rpcUrls: {
       ...devnet.rpcUrls,
       default: { http: [rpcUrl] },
@@ -66,7 +70,7 @@ async function createBurnerConnector(config: BlocDuelConfig): Promise<BurnerConn
     },
   })
 
-  connector.switchChain(devnet.id)
+  connector.switchChain(BigInt(KATANA_CHAIN_ID))
   connector.switchAccount(burnerIndex)
   rememberBurnerIndex(burnerIndex, accounts.length)
 
@@ -101,6 +105,8 @@ function createControllerConnector(config: BlocDuelConfig): ControllerConnector 
     defaultChainId:
       config.network === 'mainnet'
         ? constants.StarknetChainId.SN_MAIN
+        : config.network === 'katana'
+          ? KATANA_CHAIN_ID
         : constants.StarknetChainId.SN_SEPOLIA,
     errorDisplayMode: 'notification',
     lazyload: true,

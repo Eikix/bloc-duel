@@ -22,6 +22,11 @@
         npm-install = {
           command = "${pkgs.writeShellScript "npm-install" ''
             set -e
+            PROJECT_DIR="$PWD"
+            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
+              PROJECT_DIR="$PC_PROJ_DIR"
+            fi
+            cd "$PROJECT_DIR"
             if [ ! -d node_modules ]; then
               echo "📦 Installing npm dependencies..."
               ${pkgs.nodejs_20}/bin/npm install
@@ -34,8 +39,14 @@
 
         katana = lib.mkIf common.isLinux {
           command = "${pkgs.writeShellScript "katana-start" ''
+            set -e
+            PROJECT_DIR="$PWD"
+            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
+              PROJECT_DIR="$PC_PROJ_DIR"
+            fi
+            cd "$PROJECT_DIR"
             echo "🏯 Starting Katana (Starknet devnet) on port 5050..."
-            ${common.cairoPkgs.katana}/bin/katana --dev --dev.no-fee --http.cors_origins "*"
+            ${common.cairoPkgs.katana}/bin/katana --config contracts/katana.toml
           ''}";
           readiness_probe = healthChecks.mkKatanaHealthCheck {};
         };
@@ -44,7 +55,11 @@
           command = "${pkgs.writeShellScript "sozo-migrate" ''
             set -e
             export PATH="${common.cairoPkgs.scarb}/bin:$PATH"
-            cd contracts
+            PROJECT_DIR="$PWD"
+            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
+              PROJECT_DIR="$PC_PROJ_DIR"
+            fi
+            cd "$PROJECT_DIR/contracts"
 
             echo "🔨 Building Dojo contracts..."
             ${pkgs.util-linux}/bin/script -q -e -c "${common.cairoPkgs.sozo}/bin/sozo build" /dev/null
@@ -59,8 +74,8 @@
               exit 1
             fi
 
-            ${pkgs.coreutils}/bin/mkdir -p ../.data
-            echo "$WORLD_ADDRESS" > ../.data/world_address.txt
+            ${pkgs.coreutils}/bin/mkdir -p "$PROJECT_DIR/.data"
+            echo "$WORLD_ADDRESS" > "$PROJECT_DIR/.data/world_address.txt"
             echo "✅ World deployed at: $WORLD_ADDRESS"
             echo "📝 World address saved to .data/world_address.txt"
           ''}";
@@ -71,14 +86,22 @@
         torii = lib.mkIf common.isLinux {
           command = "${pkgs.writeShellScript "torii-start" ''
             set -e
+            PROJECT_DIR="$PWD"
+            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
+              PROJECT_DIR="$PC_PROJ_DIR"
+            fi
 
-            while [ ! -f .data/world_address.txt ]; do
+            while [ ! -f "$PROJECT_DIR/.data/world_address.txt" ]; do
               echo "⏳ Waiting for world address..."
               sleep 1
             done
 
-            WORLD_ADDRESS=$(${pkgs.coreutils}/bin/cat .data/world_address.txt)
+            WORLD_ADDRESS=$(${pkgs.coreutils}/bin/cat "$PROJECT_DIR/.data/world_address.txt")
             DB_DIR=''${BLOCDUEL_DB_DIR:-$HOME/.cache/bloc-duel/torii-local-db}
+            RELAY_PORT=''${BLOCDUEL_RELAY_PORT:-${toString common.ports.relayPort}}
+            WEBRTC_PORT=''${BLOCDUEL_WEBRTC_PORT:-${toString common.ports.webrtcPort}}
+            WEBSOCKET_PORT=''${BLOCDUEL_WEBSOCKET_PORT:-${toString common.ports.websocketPort}}
+            GRPC_PORT=''${BLOCDUEL_GRPC_PORT:-${toString common.ports.grpcPort}}
 
             echo "🗂️  Starting Torii indexer for world: $WORLD_ADDRESS"
             echo "  Database:      $DB_DIR"
@@ -90,7 +113,11 @@
               --world "$WORLD_ADDRESS" \
               --db-dir "$DB_DIR" \
               --http.port ${toString common.ports.toriiPort} \
-              --http.cors_origins "*"
+              --http.cors_origins "*" \
+              --relay.port $RELAY_PORT \
+              --relay.webrtc_port $WEBRTC_PORT \
+              --relay.websocket_port $WEBSOCKET_PORT \
+              --grpc.port $GRPC_PORT
           ''}";
           depends_on."sozo-migrate".condition = "process_completed_successfully";
           readiness_probe = healthChecks.mkToriiHealthCheck {port = common.ports.toriiPort;};
@@ -99,6 +126,27 @@
         vite-local = {
           command = "${pkgs.writeShellScript "vite-local-start" ''
             set -e
+            PROJECT_DIR="$PWD"
+            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
+              PROJECT_DIR="$PC_PROJ_DIR"
+            fi
+            cd "$PROJECT_DIR"
+
+            WORLD_ADDRESS=$(${pkgs.jq}/bin/jq -r '.world.address' contracts/manifest_dev.json)
+            ACTIONS_ADDRESS=$(${pkgs.jq}/bin/jq -r '.contracts[] | select(.tag == "bloc_duel-actions") | .address' contracts/manifest_dev.json)
+
+            if [ -z "$WORLD_ADDRESS" ] || [ "$WORLD_ADDRESS" = "null" ]; then
+              echo "❌ FAILED: Could not read world address from contracts/manifest_dev.json"
+              exit 1
+            fi
+
+            if [ -z "$ACTIONS_ADDRESS" ] || [ "$ACTIONS_ADDRESS" = "null" ]; then
+              echo "❌ FAILED: Could not read actions address from contracts/manifest_dev.json"
+              exit 1
+            fi
+
+            export PUBLIC_WORLD_ADDRESS="$WORLD_ADDRESS"
+            export PUBLIC_ACTIONS_ADDRESS="$ACTIONS_ADDRESS"
 
             echo "🚀 Starting frontend in local mode..."
             echo ""
@@ -106,6 +154,8 @@
             echo "  • Mode: local contracts"
             echo "  • Frontend: http://localhost:${toString common.ports.vitePort}"
             echo "  • Torii: http://localhost:${toString common.ports.toriiPort}"
+            echo "  • World: $PUBLIC_WORLD_ADDRESS"
+            echo "  • Actions: $PUBLIC_ACTIONS_ADDRESS"
             echo ""
 
             ${pkgs.nodejs_20}/bin/npm run dev -- --port ${toString common.ports.vitePort}
@@ -117,6 +167,7 @@
           };
           environment = {
             NODE_ENV = "development";
+            PUBLIC_DOJO_MANIFEST_PROFILE = "dev";
             PUBLIC_NODE_URL = "http://127.0.0.1:5050";
             PUBLIC_STARKNET_NETWORK = "katana";
             PUBLIC_TORII_URL = "http://127.0.0.1:${toString common.ports.toriiPort}";
