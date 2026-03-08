@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs'
+import { logger, LogLevelIndex } from 'starknet'
 import {
   agentStrategyNames,
   createAgentClient,
@@ -38,6 +39,11 @@ interface CliOptions {
   intervalMs?: number
   maxActions?: number
   maxIdlePolls?: number
+}
+
+function configureStarknetLogging() {
+  const level = (process.env.BLOCDUEL_AGENT_LOG_LEVEL ?? 'OFF').toUpperCase()
+  logger.setLogLevel(level in LogLevelIndex ? level as keyof typeof LogLevelIndex : 'OFF')
 }
 
 function fail(message: string): never {
@@ -313,6 +319,7 @@ function parseAction(matchId: number, verb: string | undefined, value: string | 
 }
 
 async function main() {
+  configureStarknetLogging()
   const { options, positionals } = parseOptions(process.argv.slice(2))
   const [scope, command, ...rest] = positionals
 
