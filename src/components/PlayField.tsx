@@ -1,9 +1,10 @@
 import { forwardRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import type { Card as GameCard } from '../game/cards'
 import { useGameStore } from '../store/gameStore'
 import { ALL_CARDS } from '../game/cards'
-import type { CardEffect, CardType } from '../game/cards'
-import { formatCost, RESOURCE_ICONS } from '../game/format'
+import { formatCost } from '../game/format'
+import { TYPE_STYLES, formatCardEffects } from '../game/cardVisuals'
 
 interface PlayFieldProps {
   playerIndex: 0 | 1
@@ -13,50 +14,20 @@ interface PlayFieldProps {
   emptyHint?: string
   targetLabel?: string
   immersive?: boolean
-}
-
-const CARD_TILE_STYLES: Record<CardType, { banner: string, card: string, chip: string, text: string }> = {
-  AI: {
-    banner: 'bg-blue-500',
-    card: 'border-blue-200/80 bg-[linear-gradient(180deg,rgba(239,247,255,0.98),rgba(216,232,252,0.92))]',
-    chip: 'bg-blue-500 text-white',
-    text: 'text-blue-900',
-  },
-  ECONOMY: {
-    banner: 'bg-amber-500',
-    card: 'border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,238,0.98),rgba(251,235,191,0.92))]',
-    chip: 'bg-amber-500 text-white',
-    text: 'text-amber-950',
-  },
-  MILITARY: {
-    banner: 'bg-red-500',
-    card: 'border-red-200/80 bg-[linear-gradient(180deg,rgba(255,243,241,0.98),rgba(251,220,214,0.92))]',
-    chip: 'bg-red-500 text-white',
-    text: 'text-red-900',
-  },
-  SYSTEM: {
-    banner: 'bg-emerald-500',
-    card: 'border-emerald-200/80 bg-[linear-gradient(180deg,rgba(239,255,247,0.98),rgba(214,245,231,0.92))]',
-    chip: 'bg-emerald-500 text-white',
-    text: 'text-emerald-900',
-  },
-}
-
-function summarizeCardEffect(effect: CardEffect, symbol?: string): string {
-  const parts: string[] = []
-  if (effect.agi) parts.push(`AGI +${effect.agi}`)
-  if (effect.escalation) parts.push(`ESC ${effect.escalation > 0 ? '+' : ''}${effect.escalation}`)
-  if (effect.capital) parts.push(`${RESOURCE_ICONS.capital}${effect.capital}`)
-  if (effect.energyPerTurn) parts.push(`${RESOURCE_ICONS.energy}+${effect.energyPerTurn}`)
-  if (effect.materialsPerTurn) parts.push(`${RESOURCE_ICONS.materials}+${effect.materialsPerTurn}`)
-  if (effect.computePerTurn) parts.push(`${RESOURCE_ICONS.compute}+${effect.computePerTurn}`)
-  if (effect.symbol) parts.push(effect.symbol.slice(0, 3))
-  if (symbol) parts.push(symbol.slice(0, 3))
-  return parts.slice(0, 3).join(' • ') || 'Passive'
+  onInspectCard?: (card: GameCard) => void
 }
 
 const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
-  function PlayField({ playerIndex, isHighlighted, label, compact = false, emptyHint, targetLabel, immersive = false }, ref) {
+  function PlayField({
+    playerIndex,
+    isHighlighted,
+    label,
+    compact = false,
+    emptyHint,
+    targetLabel,
+    immersive = false,
+    onInspectCard,
+  }, ref) {
     const playedCards = useGameStore((s) => s.players[playerIndex].playedCards)
     const playerName = useGameStore((s) => s.players[playerIndex].name)
 
@@ -73,38 +44,32 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
             : ''
         } ${compact ? 'rounded-[24px] px-3.5 py-3 md:px-4 md:py-3.5' : ''}`}
       >
-        <div className={`flex items-center justify-between gap-3 ${compact ? 'mb-2' : 'mb-3'}`}>
-          <div>
-            <p className={`section-label mb-1 ${immersive ? 'text-white/45' : ''}`}>Deployment lane</p>
-            <p className={`font-display font-black ${immersive ? 'text-white' : 'text-ink'} ${compact ? 'text-base' : 'text-lg'}`}>
-              {label ?? `${playerName} network`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {targetLabel && (
-              <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                isHighlighted
-                  ? immersive
-                    ? 'border-blue-300/70 bg-blue-500/18 text-blue-100'
-                    : 'border-blue-300 bg-blue-100 text-blue-700'
-                  : immersive
-                    ? 'border-white/15 bg-white/8 text-white/66'
+        {!immersive && (
+          <div className={`flex items-center justify-between gap-3 ${compact ? 'mb-2' : 'mb-3'}`}>
+            <div>
+              <p className="section-label mb-1">Deployment lane</p>
+              <p className={`font-display font-black text-ink ${compact ? 'text-base' : 'text-lg'}`}>
+                {label ?? `${playerName} network`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {targetLabel && (
+                <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                  isHighlighted
+                    ? 'border-blue-300 bg-blue-100 text-blue-700'
                     : 'border-blue-200/80 bg-blue-50/80 text-blue-600'
-              }`}>
-                {targetLabel}
+                }`}>
+                  {targetLabel}
+                </span>
+              )}
+              <span className="rounded-full bg-white/70 px-2.5 py-1 font-mono text-[10px] text-ink-muted">
+                {cards.length} deployed
               </span>
-            )}
-            <span className={`rounded-full px-2.5 py-1 font-mono text-[10px] ${
-              immersive
-                ? 'border border-white/12 bg-white/8 text-white/62'
-                : 'bg-white/70 text-ink-muted'
-            }`}>
-              {cards.length} deployed
-            </span>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className={`scrollbar-hidden flex items-stretch gap-2.5 overflow-x-auto rounded-[22px] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] ${
+        <div className={`scrollbar-hidden relative flex items-stretch gap-2.5 overflow-x-auto rounded-[22px] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] ${
           targetLabel
             ? immersive
               ? 'border-2 border-dashed border-blue-300/28 bg-[linear-gradient(180deg,rgba(25,53,104,0.18),rgba(11,24,46,0.12))]'
@@ -113,8 +78,15 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
               ? 'border border-white/14 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(8,18,34,0.14))]'
               : 'border border-white/80 bg-white/58'
         } ${compact ? 'min-h-[108px] py-3' : 'min-h-[128px] py-4'}`}>
+          {immersive && isHighlighted && targetLabel && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-blue-200/55 bg-blue-400/16 font-display text-4xl font-black leading-none text-blue-50 shadow-[0_18px_28px_rgba(59,130,246,0.18)]">
+                +
+              </div>
+            </div>
+          )}
           {cards.length === 0 ? (
-            <span className={`font-mono text-[11px] italic ${immersive ? 'text-white/42' : 'text-ink-faint'} ${compact ? 'py-2.5' : 'py-3.5'}`}>
+            <span className={`font-mono text-[11px] italic ${immersive ? 'text-white/42' : 'text-ink-faint'} ${compact ? 'py-2.5' : 'py-3.5'} ${immersive ? 'opacity-0' : ''}`}>
               {emptyHint ?? 'Drag a drafted card here to deploy it to the board.'}
             </span>
           ) : (
@@ -127,36 +99,52 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.94 }}
                   transition={{ type: 'spring', stiffness: 340, damping: 28, delay: index * 0.03 }}
-                  className={`relative shrink-0 overflow-hidden rounded-[16px] border shadow-[0_14px_24px_rgba(8,18,34,0.16)] ${
-                    CARD_TILE_STYLES[card!.type].card
-                  } ${compact ? 'min-h-[96px] w-[112px] p-2.5' : 'min-h-[112px] w-[124px] p-3'}`}
+                  className={`relative shrink-0 cursor-pointer overflow-hidden rounded-[18px] border bg-slate-950 ${TYPE_STYLES[card!.type].frame} ${TYPE_STYLES[card!.type].glow} ${
+                    compact ? 'h-[6.3rem] w-[4.5rem]' : 'h-[7.2rem] w-[5rem]'
+                  }`}
                   title={`${card!.name} (${card!.type})`}
+                  onClick={() => onInspectCard?.(card!)}
+                  whileHover={{ scale: 1.04, y: -3 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <div className={`absolute inset-x-0 top-0 h-1.5 ${CARD_TILE_STYLES[card!.type].banner}`} />
-                  <div className="relative flex h-full flex-col">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`rounded-full px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-[0.14em] ${CARD_TILE_STYLES[card!.type].chip}`}>
+                  <div className={`absolute inset-x-0 top-0 h-1 ${TYPE_STYLES[card!.type].accent}`} />
+                  <div className={`absolute inset-0 ${TYPE_STYLES[card!.type].fallback}`} />
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-[linear-gradient(180deg,rgba(3,9,18,0.4),rgba(3,9,18,0.08)_70%,transparent)]" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(180deg,transparent,rgba(3,9,18,0.14)_12%,rgba(3,9,18,0.58)_74%,rgba(3,9,18,0.86)_100%)]" />
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.12),transparent_28%,rgba(5,10,18,0.18)_100%)]" />
+
+                  <div className="relative flex h-full flex-col p-1.5">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <span className={`rounded-full px-1.5 py-0.5 font-mono text-[6px] font-bold uppercase tracking-[0.12em] shadow-[0_4px_10px_rgba(0,0,0,0.18)] ${TYPE_STYLES[card!.type].chip}`}>
                         {card!.type.slice(0, 3)}
                       </span>
-                      <span className="rounded-full bg-white/78 px-1.5 py-0.5 font-mono text-[8px] font-semibold text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+                      <span className="rounded-full border border-white/12 bg-black/30 px-1.5 py-0.5 font-mono text-[6px] font-semibold text-white/88 backdrop-blur-[4px] shadow-[0_4px_10px_rgba(0,0,0,0.16)]">
                         {formatCost(card!.cost)}
                       </span>
                     </div>
 
-                    <p className={`mt-2 line-clamp-2 font-display text-[11px] font-black leading-[1.02] ${CARD_TILE_STYLES[card!.type].text}`}>
-                      {card!.name}
-                    </p>
-
-                    <p className="mt-2 line-clamp-3 font-mono text-[8px] leading-tight text-ink-muted">
-                      {summarizeCardEffect(card!.effect, card!.symbol)}
-                    </p>
-
-                    <div className="mt-auto flex flex-wrap items-center gap-1 pt-2">
-                      {card!.chainFrom !== undefined && (
-                        <span className="rounded-full bg-violet-100 px-1.5 py-0.5 font-mono text-[8px] font-bold text-violet-700">
-                          CHAIN
-                        </span>
-                      )}
+                    <div className="mt-auto px-0.5 pb-0.5">
+                      <p className={`line-clamp-2 font-display text-[8px] font-black leading-[0.96] drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] ${TYPE_STYLES[card!.type].text}`}>
+                        {card!.name}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {card!.chainTo !== undefined && (
+                          <span className="rounded-full border border-violet-200/24 bg-violet-400/12 px-1 py-0.5 font-mono text-[5px] font-bold tracking-[0.08em] text-violet-50/92">
+                            CHAIN
+                          </span>
+                        )}
+                        {formatCardEffects(card!.effect, card!.symbol).slice(0, 1).map((effect) => (
+                          <span
+                            key={effect}
+                            className="rounded-full border border-white/12 bg-black/26 px-1.5 py-0.5 font-mono text-[5px] font-bold leading-none text-white/86 backdrop-blur-[4px]"
+                          >
+                            {effect
+                              .replace(/^AGI \+/, 'AGI+')
+                              .replace(/^ESC \+/, 'ESC+')
+                              .replace(/^ESC -/, 'ESC-')}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </motion.article>

@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import type { Card as GameCard } from '../game/cards'
 import { useGameStore, canAfford, getEffectiveCost } from '../store/gameStore'
 import { isAvailable } from '../game/pyramid'
 import Card from './Card'
@@ -19,13 +20,17 @@ interface CardPyramidProps {
   onPlay?: (pos: number) => void
   onDiscard?: (pos: number) => void
   onDragOverZone?: (zone: 'play' | 'discard' | null) => void
+  onInspectCard?: (card: GameCard) => void
 }
 
-export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZone }: CardPyramidProps) {
+export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZone, onInspectCard }: CardPyramidProps) {
   const pyramid = useGameStore((s) => s.pyramid)
   const selectedCard = useGameStore((s) => s.selectedCard)
   const selectCard = useGameStore((s) => s.selectCard)
   const player = useGameStore((s) => s.players[s.currentPlayer])
+  const phase = useGameStore((s) => s.phase)
+  const isCurrentUserTurn = useGameStore((s) => s.isCurrentUserTurn)
+  const systemBonusChoice = useGameStore((s) => s.systemBonusChoice)
 
   if (pyramid.length === 0) return null
 
@@ -60,6 +65,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
 
               const available = isAvailable(node.position, pyramid)
               const selected = selectedCard === node.position
+              const canSelect = phase === 'DRAFTING' && isCurrentUserTurn && !systemBonusChoice && available
               const isFreeViaChain = node.card.chainFrom !== undefined
                 ? player.playedCards.includes(node.card.chainFrom)
                 : false
@@ -71,11 +77,13 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
                   key={`${pyramidKey}-${node.card.id}`}
                   node={node}
                   available={available}
+                  canSelect={canSelect}
                   selected={selected}
                   affordable={affordable}
                   isFreeViaChain={isFreeViaChain}
                   effectiveCost={effectiveCost}
                   onSelect={selectCard}
+                  onInspect={() => onInspectCard?.(node.card)}
                   dropRefs={dropRefs}
                   onPlay={onPlay}
                   onDiscard={onDiscard}

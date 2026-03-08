@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core'
 import { resolveKatanaAccount } from '../dojo/burner'
-import { createBlocDuelRuntime, type BlocDuelRuntime } from '../dojo/client'
+import {
+  acquireBlocDuelRuntime,
+  releaseBlocDuelRuntime,
+  resetBlocDuelRuntime,
+  type BlocDuelRuntime,
+} from '../dojo/client'
 import { getDojoConfig } from '../dojo/config'
 import {
   fetchGameSnapshot,
@@ -58,10 +63,8 @@ export function useBlocDuelLifecycle() {
     setIsBootstrappingRuntime(true)
     setRuntimeError(null)
     setRuntime(null)
-    setRuntimeState((current) => {
-      current?.toriiClient.free()
-      return null
-    })
+    setRuntimeState(null)
+    resetBlocDuelRuntime()
     setRuntimeNonce((value) => value + 1)
   }, [setRuntime])
 
@@ -112,9 +115,9 @@ export function useBlocDuelLifecycle() {
     void (async () => {
       try {
         setRuntimeError(null)
-        const nextRuntime = await createBlocDuelRuntime()
+        const nextRuntime = await acquireBlocDuelRuntime()
         if (!mounted) {
-          nextRuntime.toriiClient.free()
+          releaseBlocDuelRuntime(nextRuntime)
           return
         }
 
@@ -132,7 +135,7 @@ export function useBlocDuelLifecycle() {
 
     return () => {
       mounted = false
-      currentRuntime?.toriiClient.free()
+      releaseBlocDuelRuntime(currentRuntime)
     }
   }, [runtimeNonce])
 

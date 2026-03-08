@@ -8,6 +8,7 @@ import PlayField from '../components/PlayField'
 import StrategicMapBackground from '../components/StrategicMapBackground'
 import SystemBonusChoice from '../components/SystemBonusChoice'
 import { useBlocDuelLifecycle } from '../hooks/useBlocDuel'
+import type { Card as GameCard } from '../game/cards'
 import { RESOURCE_ICONS } from '../game/format'
 import { ALL_SYSTEM_TYPES } from '../game/systems'
 import {
@@ -298,7 +299,8 @@ interface GameProps {
 
 export function Game({ onBackHome }: GameProps) {
   const [joinGameId, setJoinGameId] = useState('')
-  const [isGuideOpen, setIsGuideOpen] = useState(true)
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
+  const [inspectionState, setInspectionState] = useState<{ card: GameCard; scopeKey: string } | null>(null)
   const {
     address,
     burnerAddresses,
@@ -369,6 +371,10 @@ export function Game({ onBackHome }: GameProps) {
     : false
   const selectedEffectiveCost = selectedNode ? getEffectiveCost(selectedNode.card) : undefined
   const canAffordCard = selectedNode ? isFreeViaChain || canAfford(current, selectedEffectiveCost ?? {}) : false
+  const inspectionScopeKey = `${selectedGameId ?? 'none'}-${age}-${phase}`
+  const inspectedCard = inspectionState?.scopeKey === inspectionScopeKey ? inspectionState.card : null
+  const inspectedEffectiveCost = inspectedCard ? getEffectiveCost(inspectedCard) : undefined
+  const canAffordInspectedCard = inspectedCard ? canAfford(current, inspectedEffectiveCost ?? {}) : false
   const sellValue = getSellValue(age)
   const winnerLabel = getWinnerLabel(winner, players)
   const myGames = games.filter((game) => isMyGame(game, address ?? null))
@@ -554,6 +560,12 @@ export function Game({ onBackHome }: GameProps) {
   const showWaitingChoice =
     systemBonusChoice !== null && (!isCurrentUserTurn || localPlayerIndex !== systemBonusChoice.playerIndex)
   const isBattleView = !showLobbyScreen && !showLoadingState && !showLobbyWaitingState
+  const actionableZoomNode = selectedNode && phase === 'DRAFTING' ? selectedNode : null
+  const zoomCard = inspectedCard ?? actionableZoomNode?.card ?? null
+  const zoomIsInspectionOnly = inspectedCard !== null
+  const inspectCard = (card: GameCard) => {
+    setInspectionState({ card, scopeKey: inspectionScopeKey })
+  }
 
   useEffect(() => {
     document.body.classList.toggle('game-active', isBattleView)
@@ -564,7 +576,7 @@ export function Game({ onBackHome }: GameProps) {
 
   return (
     <div className={`game-shell relative isolate flex flex-col text-ink ${isBattleView ? 'h-screen overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
-      {isBattleView && (
+      {isBattleView && !isBootstrappingRuntime && (
         <StrategicMapBackground
           age={age}
           className="absolute inset-0 -z-10"
@@ -938,33 +950,51 @@ export function Game({ onBackHome }: GameProps) {
                 </div>
 
                 <div className="scrollbar-hidden flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto whitespace-nowrap">
-                  <span className="hud-status-pill">{PHASE_LABELS[phase]}</span>
-                  <span className="hud-status-pill">Age {AGE_LABELS[age]}</span>
-                  <span className={`hud-status-pill ${currentTurnIsLocalWallet ? 'hud-status-pill-live' : ''}`}>
+                  <span className="hud-status-pill hud-status-pill-phase">{PHASE_LABELS[phase]}</span>
+                  <span className="hud-status-pill hud-status-pill-age">
+                    <span className="hud-status-pill-kicker">Age</span>
+                    <span className="hud-status-pill-age-value">{AGE_LABELS[age]}</span>
+                  </span>
+                  <span className={`hud-status-pill hud-status-pill-turn ${currentTurnIsLocalWallet ? 'hud-status-pill-live' : ''}`}>
                     Turn: {currentTurnLabel ?? 'Awaiting seat'}
                   </span>
-                  <span className="hud-status-pill">Sell +{sellValue}</span>
-                  <span className="hud-status-pill">Win: {winner === null ? 'Live' : WIN_CONDITION_LABELS[winCondition]}</span>
+                  <span className="hud-status-pill hud-status-pill-sell">Sell +{sellValue}</span>
+                  <span className="hud-status-pill hud-status-pill-win">Win: {winner === null ? 'Live' : WIN_CONDITION_LABELS[winCondition]}</span>
                   <span className="hud-top-divider" />
-                  <div className="hud-top-stat">
-                    <span className="hud-top-stat-label">{HUD_GLYPHS.capital} Capital</span>
-                    <span className="hud-top-stat-value">{hudFocusPlayer.capital}</span>
+                  <div className="hud-top-stat hud-top-stat-capital">
+                    <span className="hud-top-stat-icon hud-top-stat-icon-capital">{HUD_GLYPHS.capital}</span>
+                    <span className="hud-top-stat-body">
+                      <span className="hud-top-stat-label">Capital</span>
+                      <span className="hud-top-stat-value">{hudFocusPlayer.capital}</span>
+                    </span>
                   </div>
-                  <div className="hud-top-stat">
-                    <span className="hud-top-stat-label">{RESOURCE_ICONS.energy} Energy</span>
-                    <span className="hud-top-stat-value">{hudFocusPlayer.production.energy}</span>
+                  <div className="hud-top-stat hud-top-stat-energy">
+                    <span className="hud-top-stat-icon hud-top-stat-icon-energy">{RESOURCE_ICONS.energy}</span>
+                    <span className="hud-top-stat-body">
+                      <span className="hud-top-stat-label">Energy</span>
+                      <span className="hud-top-stat-value">{hudFocusPlayer.production.energy}</span>
+                    </span>
                   </div>
-                  <div className="hud-top-stat">
-                    <span className="hud-top-stat-label">{RESOURCE_ICONS.materials} Materials</span>
-                    <span className="hud-top-stat-value">{hudFocusPlayer.production.materials}</span>
+                  <div className="hud-top-stat hud-top-stat-materials">
+                    <span className="hud-top-stat-icon hud-top-stat-icon-materials">{RESOURCE_ICONS.materials}</span>
+                    <span className="hud-top-stat-body">
+                      <span className="hud-top-stat-label">Materials</span>
+                      <span className="hud-top-stat-value">{hudFocusPlayer.production.materials}</span>
+                    </span>
                   </div>
-                  <div className="hud-top-stat">
-                    <span className="hud-top-stat-label">{RESOURCE_ICONS.compute} Compute</span>
-                    <span className="hud-top-stat-value">{hudFocusPlayer.production.compute}</span>
+                  <div className="hud-top-stat hud-top-stat-compute">
+                    <span className="hud-top-stat-icon hud-top-stat-icon-compute">{RESOURCE_ICONS.compute}</span>
+                    <span className="hud-top-stat-body">
+                      <span className="hud-top-stat-label">Compute</span>
+                      <span className="hud-top-stat-value">{hudFocusPlayer.production.compute}</span>
+                    </span>
                   </div>
-                  <div className="hud-top-stat">
-                    <span className="hud-top-stat-label">{HUD_GLYPHS.selection} Selected</span>
-                    <span className="hud-top-stat-value hud-top-stat-value-card">{selectedNode ? selectedNode.card.type : 'None'}</span>
+                  <div className="hud-top-stat hud-top-stat-selected">
+                    <span className="hud-top-stat-icon hud-top-stat-icon-selected">{HUD_GLYPHS.selection}</span>
+                    <span className="hud-top-stat-body">
+                      <span className="hud-top-stat-label">Selected</span>
+                      <span className="hud-top-stat-value hud-top-stat-value-card">{selectedNode ? selectedNode.card.type : 'None'}</span>
+                    </span>
                   </div>
                 </div>
 
@@ -1083,36 +1113,13 @@ export function Game({ onBackHome }: GameProps) {
 
               <section className="table-surface table-surface-battle relative min-h-0 overflow-hidden rounded-[34px] px-4 py-4 md:px-6 md:py-5">
                 <div className="relative z-10 flex h-full min-h-0 flex-col">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="section-label mb-1 text-white/45">{HUD_GLYPHS.board} Operational Theater</p>
-                      <h2 className="font-display text-[1.45rem] font-black leading-none text-white md:text-[1.8rem]">
-                        Battle board
-                      </h2>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-white/80 bg-white/86 px-3 py-1 font-mono text-[11px] font-semibold text-continental">
-                        Sell +{sellValue}
-                      </span>
-                      <span className="rounded-full border border-white/80 bg-white/86 px-3 py-1 font-mono text-[11px] font-semibold text-ink-muted">
-                        {currentTurnIsLocalWallet ? 'Your move' : 'Observe'}
-                      </span>
-                      <button
-                        onClick={() => setIsGuideOpen((currentOpen) => !currentOpen)}
-                        className="rounded-full border border-atlantic/25 bg-atlantic/10 px-3 py-1 font-mono text-[11px] font-semibold text-atlantic transition hover:-translate-y-0.5"
-                      >
-                        {isGuideOpen ? 'Hide guide' : 'Show guide'}
-                      </button>
-                    </div>
-                  </div>
-
                   <PlayField
                     playerIndex={topPlayer}
                     label="Enemy network"
                     emptyHint="Enemy deployments appear here."
                     compact
                     immersive
+                    onInspectCard={inspectCard}
                   />
 
                   <div className="relative my-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
@@ -1121,6 +1128,7 @@ export function Game({ onBackHome }: GameProps) {
                       <CardPyramid
                         key={`${selectedGameId ?? 'none'}-${age}`}
                         dropRefs={dropRefs}
+                        onInspectCard={inspectCard}
                         onPlay={(position) => void playCardAt(position)}
                         onDiscard={(position) => void discardCardAt(position)}
                         onDragOverZone={setActiveDragZone}
@@ -1138,6 +1146,7 @@ export function Game({ onBackHome }: GameProps) {
                       targetLabel="Drop to deploy"
                       compact
                       immersive
+                      onInspectCard={inspectCard}
                     />
                     <DiscardZone
                       ref={discardRef}
@@ -1161,16 +1170,25 @@ export function Game({ onBackHome }: GameProps) {
           </div>
 
           <AnimatePresence>
-            {selectedNode && phase === 'DRAFTING' && (
+            {zoomCard && (
               <CardZoom
-                card={selectedNode.card}
-                affordable={canAffordCard}
-                isFreeViaChain={isFreeViaChain}
-                effectiveCost={selectedEffectiveCost}
+                card={zoomCard}
+                affordable={zoomIsInspectionOnly ? canAffordInspectedCard : canAffordCard}
+                isFreeViaChain={zoomIsInspectionOnly ? false : isFreeViaChain}
+                effectiveCost={zoomIsInspectionOnly ? inspectedEffectiveCost : selectedEffectiveCost}
+                inspectionOnly={zoomIsInspectionOnly}
                 sellValue={sellValue}
-                onPlay={() => { void playCard() }}
-                onDiscard={() => { void discardCard() }}
-                onClose={() => useGameStore.getState().selectCard(selectedNode.position)}
+                onPlay={zoomIsInspectionOnly ? undefined : () => { void playCard() }}
+                onDiscard={zoomIsInspectionOnly ? undefined : () => { void discardCard() }}
+                onClose={() => {
+                  if (zoomIsInspectionOnly) {
+                    setInspectionState(null)
+                    return
+                  }
+                  if (actionableZoomNode) {
+                    useGameStore.getState().selectCard(actionableZoomNode.position)
+                  }
+                }}
               />
             )}
           </AnimatePresence>

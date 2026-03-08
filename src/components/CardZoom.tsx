@@ -11,14 +11,15 @@ interface CardZoomProps {
   isFreeViaChain: boolean
   effectiveCost?: ResourceCost
   sellValue: number
-  onPlay: () => void
-  onDiscard: () => void
+  onPlay?: () => void
+  onDiscard?: () => void
   onClose: () => void
+  inspectionOnly?: boolean
 }
 
 export default function CardZoom({
   card, affordable, isFreeViaChain, effectiveCost, sellValue,
-  onPlay, onDiscard, onClose,
+  onPlay, onDiscard, onClose, inspectionOnly = false,
 }: CardZoomProps) {
   const style = TYPE_STYLES[card.type]
   const displayCost = effectiveCost ?? card.cost
@@ -118,25 +119,44 @@ export default function CardZoom({
             </div>
           )}
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button
-              onClick={onPlay}
-              disabled={!affordable && !isFreeViaChain}
-              className={`rounded-2xl px-4 py-3 font-mono text-sm font-semibold text-white transition ${
-                affordable || isFreeViaChain
-                  ? 'bg-[linear-gradient(135deg,#112038,#274e79)] shadow-[0_18px_28px_rgba(17,32,56,0.2)] hover:-translate-y-0.5 hover:brightness-105'
-                  : 'cursor-not-allowed bg-ink-faint/70'
-              }`}
-            >
-              Deploy dossier
-            </button>
-            <button
-              onClick={onDiscard}
-              className="rounded-2xl border border-white/78 bg-white/64 px-4 py-3 font-mono text-sm font-semibold text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] transition hover:-translate-y-0.5 hover:text-ink"
-            >
-              Salvage for +{sellValue}
-            </button>
-          </div>
+          {inspectionOnly ? (
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="rounded-[22px] border border-white/76 bg-white/56 px-4 py-3 font-mono text-xs text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+                Observation only. You can inspect this dossier even when it is already deployed or not currently actionable.
+              </div>
+              <button
+                onClick={onClose}
+                className="rounded-2xl border border-white/78 bg-white/64 px-4 py-3 font-mono text-sm font-semibold text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] transition hover:-translate-y-0.5 hover:text-ink"
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                onClick={onPlay}
+                disabled={!onPlay || (!affordable && !isFreeViaChain)}
+                className={`rounded-2xl px-4 py-3 font-mono text-sm font-semibold text-white transition ${
+                  onPlay && (affordable || isFreeViaChain)
+                    ? 'bg-[linear-gradient(135deg,#112038,#274e79)] shadow-[0_18px_28px_rgba(17,32,56,0.2)] hover:-translate-y-0.5 hover:brightness-105'
+                    : 'cursor-not-allowed bg-ink-faint/70'
+                }`}
+              >
+                Deploy dossier
+              </button>
+              <button
+                onClick={onDiscard}
+                disabled={!onDiscard}
+                className={`rounded-2xl border px-4 py-3 font-mono text-sm font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.82)] transition ${
+                  onDiscard
+                    ? 'border-white/78 bg-white/64 text-ink-muted hover:-translate-y-0.5 hover:text-ink'
+                    : 'cursor-not-allowed border-white/60 bg-white/36 text-ink-faint'
+                }`}
+              >
+                Salvage for +{sellValue}
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>

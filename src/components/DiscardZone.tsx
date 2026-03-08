@@ -9,6 +9,34 @@ interface DiscardZoneProps {
 
 const DiscardZone = forwardRef<HTMLDivElement, DiscardZoneProps>(
   function DiscardZone({ sellValue, isHighlighted, compact = false, immersive = false }, ref) {
+    if (immersive) {
+      return (
+        <div
+          ref={ref}
+          className={`panel-glass panel-battle-glass flex items-center justify-center rounded-[24px] px-3 py-3 transition ${
+            isHighlighted
+              ? 'border-amber-300/60 bg-[linear-gradient(135deg,rgba(116,68,18,0.52),rgba(64,38,9,0.34))] shadow-[0_18px_34px_rgba(245,158,11,0.18)]'
+              : ''
+          } ${compact ? 'rounded-[22px] min-h-[108px]' : 'min-h-[128px]'}`}
+        >
+          <div className="pointer-events-none text-center">
+            <div className={`mx-auto flex items-center justify-center rounded-full border ${
+              isHighlighted
+                ? 'h-16 w-16 border-amber-200/60 bg-amber-300/16 text-amber-50'
+                : 'h-14 w-14 border-white/16 bg-white/8 text-white/64'
+            } font-display text-3xl font-black shadow-[0_18px_28px_rgba(245,158,11,0.14)]`}>
+              +{sellValue}
+            </div>
+            <p className={`mt-2 font-mono text-[10px] uppercase tracking-[0.16em] ${
+              isHighlighted ? 'text-amber-100/88' : 'text-white/42'
+            }`}>
+              Sell
+            </p>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div
         ref={ref}
