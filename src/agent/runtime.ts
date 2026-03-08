@@ -1,6 +1,7 @@
 import { CairoCustomEnum, type AccountInterface, type RpcProvider } from 'starknet'
 import { createBlocDuelRuntime, type BlocDuelWorld } from '../dojo/client'
 import { getTransactionExplorerUrl, resolveDojoConfig, type BlocDuelConfig } from '../dojo/config'
+import { prepareTransactionWait, waitForAcceptedTransaction } from '../dojo/transactions'
 import {
   fetchGameSnapshot,
   fetchGameSummaries,
@@ -93,14 +94,6 @@ function requireSigner(state: RuntimeState) {
   return {
     account: state.account,
     address: state.address,
-  }
-}
-
-async function waitForTransaction(rpcProvider: RpcProvider, transactionHash: string) {
-  try {
-    await rpcProvider.waitForTransaction(transactionHash)
-  } catch {
-    await sleep(1500)
   }
 }
 
@@ -349,13 +342,19 @@ class BlocDuelAgentClient implements BlocDuelAgent {
       await sleep(this.state.policy.cooldownMs)
     }
 
+    const prepared = await prepareTransactionWait(this.state.config.network, account)
     const result = await this.state.dojoProvider.execute(
       account,
       this.state.world.actions.buildCreateGameCalldata(),
       this.state.config.namespace,
       getLocalExecutionDetails(this.state),
     )
-    await waitForTransaction(this.state.rpcProvider, result.transaction_hash)
+    await waitForAcceptedTransaction(
+      this.state.config.network,
+      this.state.rpcProvider,
+      result.transaction_hash,
+      prepared,
+    )
 
     const attempts = this.state.policy?.waitForIndexingAttempts ?? 40
     const intervalMs = this.state.policy?.waitForIndexingIntervalMs ?? 500
@@ -455,8 +454,15 @@ class BlocDuelAgentClient implements BlocDuelAgent {
       await sleep(this.state.policy.cooldownMs)
     }
 
+    const { account } = requireSigner(this.state)
+    const prepared = await prepareTransactionWait(this.state.config.network, account)
     const result = await submitWorldAction(this.state, action)
-    await waitForTransaction(this.state.rpcProvider, result.transaction_hash)
+    await waitForAcceptedTransaction(
+      this.state.config.network,
+      this.state.rpcProvider,
+      result.transaction_hash,
+      prepared,
+    )
     const updated = await this.waitForMatchUpdate(matchId, previousVersion)
 
     return {

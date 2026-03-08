@@ -5,6 +5,8 @@ import type { SystemSymbol } from '../game/systems'
 import type { PyramidNode } from '../game/pyramid'
 import { getDraftNode } from '../game/rules'
 import type { BlocDuelWorld } from '../dojo/client'
+import type { StarknetNetwork } from '../dojo/config'
+import { prepareTransactionWait, waitForAcceptedTransaction } from '../dojo/transactions'
 import type {
   AvailableHero,
   GamePhase,
@@ -20,6 +22,7 @@ export type Player = PlayerView
 
 interface RuntimeContext {
   account: AccountInterface
+  network: StarknetNetwork
   rpcProvider: RpcProvider
   world: BlocDuelWorld
   refreshGames: () => Promise<void>
@@ -97,14 +100,6 @@ function extractErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
   return 'Transaction failed'
-}
-
-async function waitForTransaction(rpcProvider: RpcProvider, transactionHash: string) {
-  try {
-    await rpcProvider.waitForTransaction(transactionHash)
-  } catch {
-    await new Promise((resolve) => window.setTimeout(resolve, 1500))
-  }
 }
 
 function isActionStateMismatchError(error: unknown): boolean {
@@ -320,9 +315,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       const state = get()
       const runtime = requireRuntime(state)
       const knownGameIds = new Set(state.games.map((game) => game.gameId))
+      const prepared = await prepareTransactionWait(runtime.network, runtime.account)
       const result = await runtime.world.actions.createGame(runtime.account)
       notifySubmitted(result.transaction_hash)
-      await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
+      await waitForAcceptedTransaction(runtime.network, runtime.rpcProvider, result.transaction_hash, prepared)
       await runtime.refreshGames()
       const createdGameId = await runtime.discoverCreatedGame(knownGameIds)
       if (createdGameId !== null) {
@@ -345,9 +341,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     }, async (notifySubmitted) => {
       const state = get()
       const runtime = requireRuntime(state)
+      const prepared = await prepareTransactionWait(runtime.network, runtime.account)
       const result = await runtime.world.actions.joinGame(runtime.account, gameId)
       notifySubmitted(result.transaction_hash)
-      await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
+      await waitForAcceptedTransaction(runtime.network, runtime.rpcProvider, result.transaction_hash, prepared)
       get().setSelectedGameId(gameId)
       await runtime.refreshGames()
       await runtime.refreshGame(gameId)
@@ -389,6 +386,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (!getDraftNode(state.pyramid, position)) return { skipped: true }
 
       let result: Awaited<ReturnType<typeof runtime.world.actions.playCard>>
+      const prepared = await prepareTransactionWait(runtime.network, runtime.account)
       try {
         result = await runtime.world.actions.playCard(runtime.account, gameId, position)
       } catch (error) {
@@ -401,7 +399,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       notifySubmitted(result.transaction_hash)
-      await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
+      await waitForAcceptedTransaction(runtime.network, runtime.rpcProvider, result.transaction_hash, prepared)
       set({ selectedCard: null })
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
@@ -423,6 +421,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (!getDraftNode(state.pyramid, position)) return { skipped: true }
 
       let result: Awaited<ReturnType<typeof runtime.world.actions.discardCard>>
+      const prepared = await prepareTransactionWait(runtime.network, runtime.account)
       try {
         result = await runtime.world.actions.discardCard(runtime.account, gameId, position)
       } catch (error) {
@@ -435,7 +434,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       notifySubmitted(result.transaction_hash)
-      await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
+      await waitForAcceptedTransaction(runtime.network, runtime.rpcProvider, result.transaction_hash, prepared)
       set({ selectedCard: null })
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
@@ -456,6 +455,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
 
       let result: Awaited<ReturnType<typeof runtime.world.actions.invokeHero>>
+      const prepared = await prepareTransactionWait(runtime.network, runtime.account)
       try {
         result = await runtime.world.actions.invokeHero(runtime.account, gameId, heroSlot)
       } catch (error) {
@@ -468,7 +468,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       notifySubmitted(result.transaction_hash)
-      await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
+      await waitForAcceptedTransaction(runtime.network, runtime.rpcProvider, result.transaction_hash, prepared)
       set({ heroPickerOpen: false, selectedCard: null })
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
@@ -495,6 +495,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (!state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
 
       let result: Awaited<ReturnType<typeof runtime.world.actions.chooseSystemBonus>>
+      const prepared = await prepareTransactionWait(runtime.network, runtime.account)
       try {
         result = await runtime.world.actions.chooseSystemBonus(
           runtime.account,
@@ -511,7 +512,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       notifySubmitted(result.transaction_hash)
-      await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
+      await waitForAcceptedTransaction(runtime.network, runtime.rpcProvider, result.transaction_hash, prepared)
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
       return { txHash: result.transaction_hash }
@@ -531,6 +532,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (state.phase !== 'AGE_TRANSITION') return { skipped: true }
 
       let result: Awaited<ReturnType<typeof runtime.world.actions.nextAge>>
+      const prepared = await prepareTransactionWait(runtime.network, runtime.account)
       try {
         result = await runtime.world.actions.nextAge(runtime.account, gameId)
       } catch (error) {
@@ -543,7 +545,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
 
       notifySubmitted(result.transaction_hash)
-      await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
+      await waitForAcceptedTransaction(runtime.network, runtime.rpcProvider, result.transaction_hash, prepared)
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
       return { txHash: result.transaction_hash }

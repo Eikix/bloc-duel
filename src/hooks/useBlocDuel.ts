@@ -180,6 +180,7 @@ export function useBlocDuelLifecycle() {
 
           setRuntime({
             account: burnerAccount,
+            network: runtime.config.network,
             rpcProvider: runtime.dojoProvider.provider,
             world: runtime.world,
             refreshGames,
@@ -207,6 +208,7 @@ export function useBlocDuelLifecycle() {
 
     setRuntime({
       account,
+      network: runtime.config.network,
       rpcProvider: runtime.dojoProvider.provider,
       world: runtime.world,
       refreshGames,
