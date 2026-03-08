@@ -28,7 +28,7 @@ export type AgentSignerConfig =
   | { mode: 'private-key'; address: string; privateKey: string }
   | { mode: 'session-key'; account: AccountInterface; address?: string }
 
-export interface AgentRuntimeOptions extends BlocDuelConfigOverride {
+export interface AgentClientOptions extends BlocDuelConfigOverride {
   signer?: AgentSignerConfig
   policy?: AgentPolicy | null
 }
@@ -94,7 +94,7 @@ export interface WaitForGameUpdateResult {
   version: string | null
 }
 
-export interface AgentClient {
+export interface BlocDuelAgent {
   readonly address: string | null
   listGames(): Promise<GameSummary[]>
   getGame(gameId: number, actorAddress?: string): Promise<GameSnapshot | null>

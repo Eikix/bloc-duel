@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs'
 import {
-  STRATEGIES,
-  createRuntime,
-  describeAction,
+  agentStrategyNames,
+  createAgentClient,
+  formatAgentAction,
   getExplorerUrl,
-  getGameVersionHint,
+  getSnapshotVersion,
   type AgentAction,
+  type AgentClientOptions,
   type AgentPolicy,
-  type AgentRuntimeOptions,
+  type BlocDuelAgent,
   type AgentSignerConfig,
 } from './index'
 
@@ -200,7 +201,7 @@ function resolveSigner(options: CliOptions, mutating: boolean): AgentSignerConfi
   fail('Mutating commands require a signer. Use local Katana, or pass --signer-mode private-key with credentials.')
 }
 
-function buildRuntimeOptions(options: CliOptions, mutating: boolean): AgentRuntimeOptions {
+function buildClientOptions(options: CliOptions, mutating: boolean): AgentClientOptions {
   return {
     network: options.network,
     rpcUrl: options.rpcUrl ?? pickEnv(process.env.BLOCDUEL_AGENT_RPC_URL),
@@ -222,14 +223,17 @@ function print(value: unknown, asJson: boolean) {
   console.log(String(value))
 }
 
-function renderGames(games: Awaited<ReturnType<Awaited<ReturnType<typeof createRuntime>>['listGames']>>) {
+type AgentSnapshot = Awaited<ReturnType<BlocDuelAgent['getGame']>>
+type AgentGames = Awaited<ReturnType<BlocDuelAgent['listGames']>>
+
+function renderGames(games: AgentGames) {
   if (games.length === 0) return 'No games found.'
   return games
     .map((game) => `#${game.gameId}  ${game.phase.padEnd(14)}  ${game.playerOne}  ${game.playerTwo}`)
     .join('\n')
 }
 
-function renderSnapshot(snapshot: Awaited<ReturnType<Awaited<ReturnType<typeof createRuntime>>['getGame']>>) {
+function renderSnapshot(snapshot: AgentSnapshot) {
   if (!snapshot) return 'Game not found.'
 
   const legal = snapshot.systemBonusChoice
@@ -260,7 +264,7 @@ function usage() {
     '  game selfplay [--strategy-a balanced] [--strategy-b balanced] [--burner-a 0] [--burner-b 1] [--json]',
     '  game watch <id> [--interval-ms 1000] [--json]',
     '',
-    `Strategies: ${Object.keys(STRATEGIES).join(', ')}`,
+    `Strategies: ${agentStrategyNames.join(', ')}`,
   ].join('\n')
 }
 
@@ -293,12 +297,12 @@ async function main() {
   }
 
   if (scope === 'games' && command === 'list') {
-    const runtime = await createRuntime(buildRuntimeOptions(options, false))
+    const client = await createAgentClient(buildClientOptions(options, false))
     try {
-      const games = await runtime.listGames()
+      const games = await client.listGames()
       print(options.json ? games : renderGames(games), options.json)
     } finally {
-      runtime.close()
+      client.close()
     }
     return
   }
@@ -310,29 +314,29 @@ async function main() {
   if (command === 'selfplay') {
     const strategyA = options.strategyA ?? options.strategy ?? 'balanced'
     const strategyB = options.strategyB ?? options.strategy ?? 'balanced'
-    const baseOptions = buildRuntimeOptions(options, true)
+    const baseOptions = buildClientOptions(options, true)
 
-    const runtimeA = await createRuntime({
+    const clientA = await createAgentClient({
       ...baseOptions,
       signer: { mode: 'katana-burner', burnerIndex: options.burnerA ?? 0 },
     })
-    const runtimeB = await createRuntime({
+    const clientB = await createAgentClient({
       ...baseOptions,
       signer: { mode: 'katana-burner', burnerIndex: options.burnerB ?? 1 },
     })
 
     try {
-      const created = await runtimeA.createGame()
+      const created = await clientA.createGame()
       if (!created.gameId) {
         fail('Failed to discover created game id')
       }
 
-      await runtimeB.joinGame(created.gameId)
-      let snapshot = await runtimeA.getGame(created.gameId)
+      await clientB.joinGame(created.gameId)
+      let snapshot = await clientA.getGame(created.gameId)
       let turns = 0
 
       while (snapshot && snapshot.phase !== 'GAME_OVER' && turns < (options.maxActions ?? 200)) {
-        const active = snapshot.currentPlayer === 0 ? runtimeA : runtimeB
+        const active = snapshot.currentPlayer === 0 ? clientA : clientB
         const strategy = snapshot.currentPlayer === 0 ? strategyA : strategyB
         await active.playTurn(snapshot.gameId, strategy)
         snapshot = await active.getGame(snapshot.gameId)
@@ -346,19 +350,19 @@ async function main() {
       }
       print(options.json ? payload : renderSnapshot(snapshot), options.json)
     } finally {
-      runtimeA.close()
-      runtimeB.close()
+      clientA.close()
+      clientB.close()
     }
     return
   }
 
   const gameId = rest[0] ? parseNumber(rest[0], 'game id') : undefined
   const mutating = command === 'create' || command === 'join' || command === 'act' || command === 'autoplay'
-  const runtime = await createRuntime(buildRuntimeOptions(options, mutating))
+  const client = await createAgentClient(buildClientOptions(options, mutating))
 
   try {
     if (command === 'create') {
-      const created = await runtime.createGame()
+      const created = await client.createGame()
       const payload = {
         ...created,
         explorerUrl: getExplorerUrl(created.txHash),
@@ -373,30 +377,30 @@ async function main() {
     }
 
     if (command === 'join') {
-      const joined = await runtime.joinGame(gameId)
+      const joined = await client.joinGame(gameId)
       if (options.json) print(joined, true)
       else console.log(renderSnapshot(joined.snapshot))
       return
     }
 
     if (command === 'show') {
-      const snapshot = await runtime.getGame(gameId)
+      const snapshot = await client.getGame(gameId)
       print(options.json ? snapshot : renderSnapshot(snapshot), options.json)
       return
     }
 
     if (command === 'legal') {
-      const actions = await runtime.getLegalActions(gameId)
-      print(options.json ? actions : actions.map(describeAction).join('\n') || 'No legal actions.', options.json)
+      const actions = await client.getLegalActions(gameId)
+      print(options.json ? actions : actions.map(formatAgentAction).join('\n') || 'No legal actions.', options.json)
       return
     }
 
     if (command === 'act') {
       const action = parseAction(gameId, rest[1], rest[2])
-      const result = await runtime.submitAction(gameId, action)
+      const result = await client.submitAction(gameId, action)
       if (options.json) print(result, true)
       else console.log([
-        `Action: ${describeAction(action)}`,
+        `Action: ${formatAgentAction(action)}`,
         result.txHash ? `Tx: ${result.txHash}` : 'Tx: dry-run',
         getExplorerUrl(result.txHash) ? `Explorer: ${getExplorerUrl(result.txHash)}` : null,
         renderSnapshot(result.snapshot),
@@ -405,7 +409,7 @@ async function main() {
     }
 
     if (command === 'autoplay') {
-      const result = await runtime.playGame(gameId, options.strategy ?? 'balanced', {
+      const result = await client.playGame(gameId, options.strategy ?? 'balanced', {
         pollIntervalMs: options.intervalMs,
         maxActions: options.maxActions,
         maxIdlePolls: options.maxIdlePolls,
@@ -416,14 +420,14 @@ async function main() {
     }
 
     if (command === 'watch') {
-      let snapshot = await runtime.getGame(gameId)
-      let version = getGameVersionHint(snapshot)
+      let snapshot = await client.getGame(gameId)
+      let version = getSnapshotVersion(snapshot)
       print(options.json ? snapshot : renderSnapshot(snapshot), options.json)
 
       for (;;) {
         await new Promise((resolve) => setTimeout(resolve, options.intervalMs ?? 1000))
-        const updated = await runtime.getGame(gameId)
-        const nextVersion = getGameVersionHint(updated)
+        const updated = await client.getGame(gameId)
+        const nextVersion = getSnapshotVersion(updated)
         if (nextVersion !== version) {
           version = nextVersion
           snapshot = updated
@@ -434,7 +438,7 @@ async function main() {
 
     fail(usage())
   } finally {
-    runtime.close()
+    client.close()
   }
 }
 

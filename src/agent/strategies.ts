@@ -96,7 +96,7 @@ function buildStrategy(name: string): AgentStrategy {
   }
 }
 
-export const STRATEGIES: Record<string, AgentStrategy> = {
+export const agentStrategies: Record<string, AgentStrategy> = {
   random: buildStrategy('random'),
   'greedy-agi': buildStrategy('greedy-agi'),
   'greedy-escalation': buildStrategy('greedy-escalation'),
@@ -104,10 +104,12 @@ export const STRATEGIES: Record<string, AgentStrategy> = {
   balanced: buildStrategy('balanced'),
 }
 
+export const agentStrategyNames = Object.keys(agentStrategies)
+
 export function resolveStrategy(strategy: string | AgentStrategy): AgentStrategy {
   if (typeof strategy !== 'string') return strategy
 
-  const resolved = STRATEGIES[strategy]
+  const resolved = agentStrategies[strategy]
   if (!resolved) {
     throw new Error(`Unknown strategy "${strategy}"`)
   }

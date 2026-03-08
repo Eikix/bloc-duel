@@ -20,10 +20,10 @@ import { resolveAgentSigner } from './signer'
 import { resolveStrategy } from './strategies'
 import type {
   AgentAction,
-  AgentClient,
+  AgentClientOptions,
   AgentPolicy,
-  AgentRuntimeOptions,
   AgentStrategy,
+  BlocDuelAgent,
   CreatedGameResult,
   JoinedGameResult,
   PlayGameOptions,
@@ -263,7 +263,7 @@ async function submitWorldAction(
   }
 }
 
-class BlocDuelAgentRuntime implements AgentClient {
+class BlocDuelAgentClient implements BlocDuelAgent {
   readonly address: string | null
   private readonly state: RuntimeState
 
@@ -501,11 +501,11 @@ class BlocDuelAgentRuntime implements AgentClient {
   }
 }
 
-export function getGameVersionHint(snapshot: GameSnapshot | null) {
+export function getSnapshotVersion(snapshot: GameSnapshot | null) {
   return versionSnapshot(snapshot)
 }
 
-export function describeAction(action: AgentAction): string {
+export function formatAgentAction(action: AgentAction): string {
   switch (action.kind) {
     case 'create_game':
       return 'create_game'
@@ -528,12 +528,12 @@ export function getExplorerUrl(txHash: string | null): string | null {
   return txHash ? getTransactionExplorerUrl(txHash) : null
 }
 
-export async function createRuntime(options: AgentRuntimeOptions = {}): Promise<AgentClient> {
+export async function createAgentClient(options: AgentClientOptions = {}): Promise<BlocDuelAgent> {
   const config = resolveDojoConfig(options)
   const runtime = await createBlocDuelRuntime(config)
   const signer = options.signer ? await resolveAgentSigner(config.rpcUrl, options.signer) : null
 
-  return new BlocDuelAgentRuntime({
+  return new BlocDuelAgentClient({
     account: signer?.account ?? null,
     address: signer?.address ?? null,
     config,
