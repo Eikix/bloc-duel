@@ -4,6 +4,18 @@ import * as torii from '@dojoengine/torii-client'
 import { getDojoConfig } from './config'
 
 export type BlocDuelWorld = ReturnType<typeof setupWorld>
+export type BlocDuelRuntime = {
+  config: ReturnType<typeof getDojoConfig>
+  dojoProvider: DojoProvider
+  world: BlocDuelWorld
+  toriiClient: torii.ToriiClient
+}
+
+let sharedRuntime: BlocDuelRuntime | null = null
+let sharedRuntimePromise: Promise<BlocDuelRuntime> | null = null
+let sharedRuntimeUsers = 0
+let sharedRuntimeDisposeTimer: ReturnType<typeof setTimeout> | null = null
+let sharedRuntimeGeneration = 0
 
 function compactAddress(address: string): string {
   return `${address.slice(0, 8)}...${address.slice(-6)}`
@@ -83,7 +95,7 @@ async function validateRuntime(dojoProvider: DojoProvider, toriiUrl: string) {
   }
 }
 
-export async function createBlocDuelRuntime() {
+async function createBlocDuelRuntime() {
   const config = getDojoConfig()
   const dojoProvider = new DojoProvider(config.manifest, config.rpcUrl)
   await validateRuntime(dojoProvider, config.toriiUrl)
@@ -101,4 +113,80 @@ export async function createBlocDuelRuntime() {
   }
 }
 
-export type BlocDuelRuntime = Awaited<ReturnType<typeof createBlocDuelRuntime>>
+export async function acquireBlocDuelRuntime() {
+  if (sharedRuntimeDisposeTimer) {
+    clearTimeout(sharedRuntimeDisposeTimer)
+    sharedRuntimeDisposeTimer = null
+  }
+
+  if (sharedRuntime) {
+    sharedRuntimeUsers += 1
+    return sharedRuntime
+  }
+
+  if (!sharedRuntimePromise) {
+    const generation = sharedRuntimeGeneration
+    const pendingRuntime = createBlocDuelRuntime()
+    const pendingRuntimePromise: Promise<BlocDuelRuntime> = pendingRuntime
+      .then((runtime) => {
+        if (generation !== sharedRuntimeGeneration) {
+          runtime.toriiClient.free()
+          throw new Error('Discarded stale Dojo runtime bootstrap')
+        }
+
+        sharedRuntime = runtime
+        return runtime
+      })
+      .catch((error) => {
+        if (sharedRuntimePromise === pendingRuntimePromise) {
+          sharedRuntimePromise = null
+        }
+        throw error
+      })
+
+    sharedRuntimePromise = pendingRuntimePromise
+  }
+
+  const runtime = await sharedRuntimePromise
+  sharedRuntimeUsers += 1
+  return runtime
+}
+
+export function releaseBlocDuelRuntime(runtime: BlocDuelRuntime | null | undefined) {
+  if (!runtime) return
+
+  sharedRuntimeUsers = Math.max(0, sharedRuntimeUsers - 1)
+
+  if (sharedRuntimeUsers > 0 || sharedRuntimeDisposeTimer) {
+    return
+  }
+
+  // Give React StrictMode a chance to remount without double-bootstrapping Torii.
+  sharedRuntimeDisposeTimer = setTimeout(() => {
+    sharedRuntimeDisposeTimer = null
+
+    if (sharedRuntimeUsers > 0) {
+      return
+    }
+
+    const runtimeToDispose = sharedRuntime
+    sharedRuntime = null
+    sharedRuntimePromise = null
+    runtimeToDispose?.toriiClient.free()
+  }, 1500)
+}
+
+export function resetBlocDuelRuntime() {
+  sharedRuntimeGeneration += 1
+  sharedRuntimeUsers = 0
+
+  if (sharedRuntimeDisposeTimer) {
+    clearTimeout(sharedRuntimeDisposeTimer)
+    sharedRuntimeDisposeTimer = null
+  }
+
+  const runtimeToDispose = sharedRuntime
+  sharedRuntime = null
+  sharedRuntimePromise = null
+  runtimeToDispose?.toriiClient.free()
+}

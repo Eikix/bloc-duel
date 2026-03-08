@@ -15,11 +15,13 @@ export interface DropRefs {
 interface CardProps {
   node: PyramidNode
   available: boolean
+  canSelect: boolean
   selected: boolean
   affordable: boolean
   isFreeViaChain: boolean
   effectiveCost?: ResourceCost
   onSelect: (pos: number) => void
+  onInspect?: () => void
   dropRefs?: DropRefs
   onPlay?: (pos: number) => void
   onDiscard?: (pos: number) => void
@@ -36,8 +38,8 @@ function isPointInRect(ref: RefObject<HTMLElement | null>, point: { x: number; y
 }
 
 export default function Card({
-  node, available, selected, affordable, isFreeViaChain, effectiveCost,
-  onSelect, dropRefs, onPlay, onDiscard, onDragOverZone,
+  node, available, canSelect, selected, affordable, isFreeViaChain, effectiveCost,
+  onSelect, onInspect, dropRefs, onPlay, onDiscard, onDragOverZone,
 }: CardProps) {
   const { card, position } = node
   const style = TYPE_STYLES[card.type]
@@ -53,7 +55,9 @@ export default function Card({
   const didDragRef = useRef(false)
   const pressStartRef = useRef<{ x: number; y: number } | null>(null)
 
-  const canDrag = available && !!dropRefs
+  const canDrag = available && canSelect && !!dropRefs
+  const canInspect = !!onInspect
+  const isClickable = canSelect || canInspect
 
   const handleDrag = (_: unknown, info: { point: { x: number; y: number } }) => {
     if (pressStartRef.current) {
@@ -110,7 +114,10 @@ export default function Card({
         relative h-[8rem] w-[5.7rem] overflow-hidden rounded-[22px] border ${style.frame} bg-slate-950
         flex flex-col select-none transition-shadow duration-150 sm:h-[8.35rem] sm:w-[5.95rem] md:h-[8.85rem] md:w-[6.3rem] lg:h-[9.4rem] lg:w-[6.7rem] xl:h-[10rem] xl:w-[7.1rem] 2xl:h-[10.7rem] 2xl:w-[7.6rem]
         ${selected ? 'ring-2 ring-atlantic/70 ring-offset-2 ring-offset-slate-900/75' : ''}
-        ${available ? `cursor-grab ${style.glow}` : 'pointer-events-none opacity-70 saturate-75 brightness-90 shadow-none'}
+        ${canDrag ? `cursor-grab ${style.glow}` : ''}
+        ${isClickable && !canDrag ? `cursor-pointer ${style.glow}` : ''}
+        ${!available ? 'opacity-70 saturate-75 brightness-90' : ''}
+        ${!isClickable ? 'pointer-events-none shadow-none' : ''}
         ${isDragging ? 'z-[100] cursor-grabbing shadow-[0_26px_36px_rgba(42,59,83,0.24)]' : ''}
         ${canDrag ? 'draggable-card' : ''}
       `}
@@ -119,10 +126,14 @@ export default function Card({
           didDragRef.current = false
           return
         }
-        if (available) onSelect(position)
+        if (canSelect) {
+          onSelect(position)
+          return
+        }
+        onInspect?.()
       }}
-      whileHover={available && !isDragging ? { scale: 1.05, y: -4 } : undefined}
-      whileTap={available && !isDragging ? { scale: 0.98 } : undefined}
+      whileHover={isClickable && !isDragging ? { scale: 1.05, y: -4 } : undefined}
+      whileTap={isClickable && !isDragging ? { scale: 0.98 } : undefined}
       initial={{ opacity: 0, scale: 0.92 }}
       animate={
         shaking

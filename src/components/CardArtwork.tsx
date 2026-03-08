@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { Card } from '../game/cards'
 import { getCardArtSources } from '../game/cardArt'
 
@@ -17,33 +17,59 @@ export default function CardArtwork({
   fallbackClassName = 'bg-slate-900',
   loading = 'lazy',
 }: CardArtworkProps) {
-  const [hasError, setHasError] = useState(false)
-  const [currentFormat, setCurrentFormat] = useState<'webp' | 'png'>('webp')
+  const [artState, setArtState] = useState<{
+    cardName: string
+    currentFormat: 'webp' | 'png'
+    hasError: boolean
+  }>({
+    cardName: card.name,
+    currentFormat: 'webp',
+    hasError: false,
+  })
   const art = getCardArtSources(card.name)
-  const showArt = art && !hasError
-
-  useEffect(() => {
-    setHasError(false)
-    setCurrentFormat('webp')
-  }, [card.name])
+  const resolvedArtState = artState.cardName === card.name
+    ? artState
+    : {
+      cardName: card.name,
+      currentFormat: 'webp' as const,
+      hasError: false,
+    }
+  const showArt = art && !resolvedArtState.hasError
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
       {showArt ? (
         <div className="block h-full w-full">
           <img
-            src={currentFormat === 'webp' ? art.webp : art.png}
+            src={resolvedArtState.currentFormat === 'webp' ? art.webp : art.png}
             alt=""
             loading={loading}
             draggable={false}
             className={`block h-full w-full object-cover object-center ${imgClassName}`}
             onError={() => {
-              if (currentFormat === 'webp') {
-                setCurrentFormat('png')
-                return
-              }
+              setArtState((previousState) => {
+                const currentState = previousState.cardName === card.name
+                  ? previousState
+                  : {
+                    cardName: card.name,
+                    currentFormat: 'webp' as const,
+                    hasError: false,
+                  }
 
-              setHasError(true)
+                if (currentState.currentFormat === 'webp') {
+                  return {
+                    cardName: card.name,
+                    currentFormat: 'png' as const,
+                    hasError: false,
+                  }
+                }
+
+                return {
+                  cardName: card.name,
+                  currentFormat: 'png' as const,
+                  hasError: true,
+                }
+              })
             }}
           />
         </div>
