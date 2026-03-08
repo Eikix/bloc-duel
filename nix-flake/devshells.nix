@@ -7,6 +7,7 @@
     ...
   }: let
     cairo-nix = inputs.cairo-nix.packages.${system};
+    common = import ./process-compose/common/config.nix {inherit inputs pkgs system;};
   in {
     devShells.default = pkgs.mkShell {
       packages = with pkgs;
@@ -31,6 +32,9 @@
 
           # Protobuf for torii
           protobuf
+        ]
+        ++ lib.optionals common.isDarwin [
+          docker-client
         ]
         ++ lib.optionals (system == "x86_64-linux") (with pkgs; [
           systemd
@@ -64,8 +68,11 @@
       shellHook = ''
         echo "🎴 BLOC:DUEL development environment"
         echo "Node.js: $(node --version)"
-        ${lib.optionalString (system == "x86_64-linux") ''
+        ${lib.optionalString common.isLinux ''
           echo "🔧 Cairo/Starknet tools: sozo, katana, torii, scarb, starkli"
+        ''}
+        ${lib.optionalString common.useDockerDojo ''
+          echo "🐳 Dojo tools run through Docker on macOS"
         ''}
 
         # Create data directory

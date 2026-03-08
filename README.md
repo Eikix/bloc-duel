@@ -6,6 +6,8 @@ A two-player strategy card game set in a near-future geopolitical conflict. Draf
 
 Requires [Nix](https://nixos.org/) with flakes enabled. The dev environment provides all tools (Node.js, Katana, Torii, Sozo, Scarb).
 
+On macOS, local Katana/Torii/Sozo now run through Docker Desktop because the current Nix Cairo toolchain is Linux-only.
+
 ### Mode 1: Local Dev (Katana + Torii + Vite)
 
 Full local stack — spins up a local Starknet devnet, deploys contracts, starts the indexer, and runs the frontend.
@@ -21,6 +23,8 @@ What it does:
 - Installs npm deps if needed
 - Starts Vite dev server (port 5173)
 - Uses local Katana burner accounts instead of Cartridge Controller
+
+On macOS this mode requires Docker Desktop running. The Dojo services use `ghcr.io/dojoengine/dojo:v1.8.0` under `linux/amd64`.
 
 **When to use:** Day-to-day local development. No mainnet costs, fast iteration.
 
@@ -75,8 +79,17 @@ What it does:
 | Vite dev server | 5173 |
 | Katana (local Starknet) | 5050 |
 | Torii (indexer) | 8080 |
+| Torii gRPC | 18093 |
 
 Override with env vars: `BLOCDUEL_VITE_PORT`, `BLOCDUEL_TORII_PORT`, etc.
+
+Optional local HTTPS:
+
+```bash
+BLOCDUEL_USE_MKCERT=1 nix run .#start
+```
+
+By default the local stack uses plain HTTP so headless runs do not block on `mkcert` sudo prompts.
 
 ### Without Nix
 
@@ -86,6 +99,45 @@ npm run dev
 ```
 
 This only starts the frontend — you'll need to run Katana/Torii/Sozo manually.
+
+## Agent Play
+
+The repo now includes a headless TypeScript client plus a thin CLI for direct Dojo/Torii gameplay without the browser UI.
+
+Build the CLI:
+
+```bash
+npm run build:agent
+```
+
+Run it from the repo:
+
+```bash
+npm run agent -- games list
+npm run agent -- game show 123
+npm run agent -- game legal 123
+npm run agent -- game autoplay 123 --strategy balanced
+npm run agent -- game selfplay --strategy-a balanced --strategy-b systems-first
+```
+
+Useful env vars:
+
+- `BLOCDUEL_AGENT_RPC_URL`
+- `BLOCDUEL_AGENT_TORII_URL`
+- `BLOCDUEL_AGENT_WORLD_ADDRESS`
+- `BLOCDUEL_AGENT_ACTIONS_ADDRESS`
+- `BLOCDUEL_AGENT_SIGNER_MODE`
+- `BLOCDUEL_AGENT_BURNER_INDEX`
+- `BLOCDUEL_AGENT_ACCOUNT_ADDRESS`
+- `BLOCDUEL_AGENT_PRIVATE_KEY`
+- `BLOCDUEL_AGENT_POLICY_FILE`
+
+Supported signer modes:
+
+- `katana-burner` for local automation
+- `private-key` for direct testnet/mainnet automation
+
+Mainnet mutations require an explicit JSON policy file. Read-only commands like `games list` and `game show` do not.
 
 ## How It Works
 

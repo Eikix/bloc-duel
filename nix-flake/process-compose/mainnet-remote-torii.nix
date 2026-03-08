@@ -9,7 +9,7 @@
     system,
     ...
   }: let
-    common = import ./common/config.nix {inherit inputs system;};
+    common = import ./common/config.nix {inherit inputs pkgs system;};
   in {
     process-compose.start-mainnet-torii = {
       imports = [
@@ -131,6 +131,7 @@
             PUBLIC_DOJO_MANIFEST_PROFILE = "mainnet";
             PUBLIC_NODE_URL = "https://api.cartridge.gg/x/starknet/mainnet";
             PUBLIC_STARKNET_NETWORK = "mainnet";
+            BLOCDUEL_USE_MKCERT = "0";
           };
         };
       };
