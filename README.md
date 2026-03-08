@@ -297,7 +297,7 @@ Two rival blocs — **Atlantic** and **Continental** — compete across three ag
 |---|---|
 | **AGI Breakthrough** | Push your AGI track to 7 |
 | **Escalation Dominance** | Push the shared escalation track to your side's limit (`-6` for Atlantic, `+6` for Continental) |
-| **Systems Dominance** | Collect all 4 system types during Age III |
+| **Systems Dominance** | Collect all 4 system types |
 | **Points** | If no one wins by Age 3, highest score (AGI + distinct systems x2 + heroes) wins |
 
 ### Card Types
@@ -331,6 +331,21 @@ Cards can chain across ages. If you played the prerequisite card, the next link 
 ### Heroes
 
 Powerful one-time recruits available each age. Each hero costs resources plus a surcharge (+3 per hero you already own). Heroes provide large effects but replace your card draft for the turn.
+
+## If We Had More Time
+
+The main design area we would revisit is systems. Right now doctrines work, but they are not yet as fun or as impactful as they should be.
+
+What we would likely try next:
+- unlock doctrines at either 2 different systems or 2 copies of the same system
+- make doctrines feel like real game-defining moments, not minor stat bumps
+- push doctrine effects toward sharper identity and interaction
+
+Doctrine ideas worth testing:
+- **Diplomacy**: reset escalation to `0` for both sides
+- **Finance**: discarding cards gives `2x` capital
+- **Compute**: AGI cards cost `1` less
+- **Finance / hero economy**: remove excess payment friction when buying heroes
 
 ## Stack
 
