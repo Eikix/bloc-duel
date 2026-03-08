@@ -1,9 +1,9 @@
 {
   "world": {
     "class_hash": "0x613551abceb2b37073b1149bb862ea70cf029981ce1ca47e9dd7c7ab97cb65d",
-    "address": "0x442c8fc6dae3ca40172b6a5feed233c85e57a68858431baa09b5dc80f18e253",
-    "seed": "bloc_duel",
-    "name": "BlocDuel",
+    "address": "0x2d98106c0cf525f5e535fd6f7ebd0c8073199737757ce08bf66d6578d1e583a",
+    "seed": "bloc_duel_sepolia",
+    "name": "BlocDuel Sepolia",
     "entrypoints": [
       "uuid",
       "set_metadata",
@@ -33,7 +33,7 @@
   },
   "contracts": [
     {
-      "address": "0x4fbc0473a485946f5441125578e57e5c280644dd7469e382f562b2d46c17cea",
+      "address": "0x187a94a772ff6169e2f1c6c76b3069b4cf744f8eb2061dd9971f78318978d0c",
       "class_hash": "0x3a7f369aff4c99e43ada70271ac937a8f7e3ec67c0d5fcc602692876d27c45c",
       "init_calldata": [],
       "tag": "bloc_duel-actions",

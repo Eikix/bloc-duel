@@ -7,11 +7,12 @@ const LOCAL_TORII_URL = 'http://127.0.0.1:8080'
 
 export type StarknetNetwork = 'katana' | 'sepolia' | 'mainnet'
 export type WalletMode = 'burner' | 'controller'
-type DojoManifestProfile = 'dev' | 'mainnet'
+type DojoManifestProfile = 'dev' | 'sepolia' | 'mainnet'
 type EnvBag = Record<string, string | undefined>
 
 const MANIFESTS = {
   dev: devManifest,
+  sepolia: devManifest,
   mainnet: mainnetManifest,
 } as const
 
@@ -75,6 +76,8 @@ function normalizeManifestProfile(value: string | undefined): DojoManifestProfil
     case 'local':
     case 'katana':
       return 'dev'
+    case 'sepolia':
+      return 'sepolia'
     case 'mainnet':
       return 'mainnet'
     default:
@@ -133,7 +136,7 @@ function buildDojoConfig(overrides: BlocDuelConfigOverride = {}) {
     pickEnv(
       readEnv('VITE_PUBLIC_DOJO_MANIFEST_PROFILE', 'PUBLIC_DOJO_MANIFEST_PROFILE'),
     ),
-  ) ?? (network === 'mainnet' ? 'mainnet' : 'dev')
+  ) ?? (network === 'mainnet' ? 'mainnet' : network === 'sepolia' ? 'sepolia' : 'dev')
   const baseManifest = MANIFESTS[manifestProfile]
   const rpcUrl = pickEnv(rpcUrlHint, DEFAULT_RPC_URLS[network])!
   const walletMode = overrides.walletMode ?? getWalletMode(network)

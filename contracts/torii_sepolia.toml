@@ -1,0 +1,11 @@
+world_address = "0x02d98106c0cf525f5e535fd6f7ebd0c8073199737757ce08bf66d6578d1e583a"
+rpc = "https://api.cartridge.gg/x/starknet/sepolia"
+
+[server]
+http_cors_origins = ["*"]
+
+[indexing]
+controllers = true
+index_pending = false
+polling_interval = 1000
+max_concurrent_tasks = 20

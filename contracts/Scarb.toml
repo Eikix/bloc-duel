@@ -8,6 +8,9 @@ sierra-replace-ids = true
 
 [scripts]
 migrate = "sozo build && sozo migrate"
+sepolia_build = "sozo -P sepolia build"
+migrate_sepolia = "sozo -P sepolia migrate"
+torii_sepolia = "slot deployments create bloc-duel-sepolia torii --team zkorp --config ./torii_sepolia.toml"
 
 [dependencies]
 dojo = "1.8.0"
@@ -26,3 +29,4 @@ cairo_test = "2.13.1"
 dojo_cairo_test = "1.8.0"
 
 [profile.mainnet]
+[profile.sepolia]

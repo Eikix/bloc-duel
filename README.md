@@ -98,6 +98,55 @@ npm run dev
 
 This only starts the frontend — you'll need to run Katana/Torii/Sozo manually.
 
+## Sepolia Deployment
+
+Following the same pattern as `prediction-market`, Sepolia uses its own Sozo profile and a dedicated Torii config.
+
+### 1) Deploy the Dojo world to Sepolia
+
+```bash
+cd contracts
+sozo -P sepolia build
+sozo -P sepolia migrate
+```
+
+This uses `contracts/dojo_sepolia.toml` and generates `contracts/manifest_sepolia.json`.
+
+### 2) Update the Torii config
+
+After migration, copy the deployed world address into `contracts/torii_sepolia.toml`:
+
+```bash
+jq -r '.world.address' contracts/manifest_sepolia.json
+```
+
+Set that value as `world_address` in `contracts/torii_sepolia.toml`.
+
+### 3) Create Torii on Cartridge Slot (`zkorp` team)
+
+```bash
+cd contracts
+slot deployments create bloc-duel-sepolia torii --team zkorp --config ./torii_sepolia.toml
+```
+
+Hosted Torii URL:
+
+```text
+https://api.cartridge.gg/x/bloc-duel-sepolia/torii
+```
+
+### 4) Run the frontend against Sepolia
+
+```bash
+PUBLIC_STARKNET_NETWORK=sepolia \
+PUBLIC_DOJO_MANIFEST_PROFILE=sepolia \
+PUBLIC_NODE_URL=https://api.cartridge.gg/x/starknet/sepolia \
+PUBLIC_TORII_URL=https://api.cartridge.gg/x/bloc-duel-sepolia/torii \
+PUBLIC_WORLD_ADDRESS=$(jq -r '.world.address' contracts/manifest_sepolia.json) \
+PUBLIC_ACTIONS_ADDRESS=$(jq -r '.contracts[] | select(.tag == "bloc_duel-actions") | .address' contracts/manifest_sepolia.json) \
+npm run dev
+```
+
 ## Headless Agent SDK
 
 The repo also ships a headless agent client for programmatic play. It talks directly to Dojo actions and Torii, so it can:
