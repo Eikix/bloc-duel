@@ -134,7 +134,7 @@ export default function Card({
       }}
       whileHover={isClickable && !isDragging ? { scale: 1.05, y: -4 } : undefined}
       whileTap={isClickable && !isDragging ? { scale: 0.98 } : undefined}
-      initial={{ opacity: 0, scale: 0.92 }}
+      initial={false}
       animate={
         shaking
           ? { opacity: 1, scale: 1, x: [0, -8, 8, -6, 6, 0] }

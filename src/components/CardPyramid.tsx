@@ -43,7 +43,7 @@ export default function CardPyramid({ dropRefs, onPlay, onDiscard, onDragOverZon
           key={`${pyramidKey}-${rowIndex}`}
           className={`flex justify-center gap-1 sm:gap-2 md:gap-2.5 xl:gap-3 2xl:gap-3.5 ${rowIndex > 0 ? ROW_OVERLAP : ''}`}
           style={{ zIndex: ROW_Z[rowIndex] }}
-          initial={{ opacity: 0, y: 18 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, delay: rowIndex * 0.05 }}
         >

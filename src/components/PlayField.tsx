@@ -74,7 +74,7 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
                 <motion.article
                   key={card!.id}
                   layout
-                  initial={{ opacity: 0, y: 12, scale: 0.94 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.94 }}
                   transition={{ type: 'spring', stiffness: 340, damping: 28, delay: index * 0.03 }}
@@ -179,7 +179,7 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
                 <motion.article
                   key={card!.id}
                   layout
-                  initial={{ opacity: 0, y: 12, scale: 0.94 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.94 }}
                   transition={{ type: 'spring', stiffness: 340, damping: 28, delay: index * 0.03 }}
