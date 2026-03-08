@@ -9,6 +9,23 @@ What gives the game replayability:
 - heroes create swing turns and distinct timing windows
 - multiple win lines force different plans and denial patterns
 
+![Bloc Duel home screen](docs/screenshots/tutorial-home.png)
+
+### Why it feels alive
+
+You are not just building an engine. Every draft changes what your opponent can still reach.
+- race for **AGI**
+- pressure the shared **escalation** track
+- invest into **systems** for bonuses and the instant win
+- pivot to **points** if neither side closes early
+
+<p align="center">
+  <img src="public/cards/neural_relay.webp" alt="Neural Relay card art" width="140" />
+  <img src="public/cards/propaganda_hub.webp" alt="Propaganda Hub card art" width="140" />
+  <img src="public/cards/embassy.webp" alt="Embassy card art" width="140" />
+  <img src="public/cards/mining_outpost.webp" alt="Mining Outpost card art" width="140" />
+</p>
+
 The game is designed to work across:
 - browser play with Cartridge Controller on Starknet Sepolia
 - local burner-account play on Katana
@@ -20,6 +37,57 @@ Current public deployment:
 - Frontend: [https://bloc-duel.vercel.app](https://bloc-duel.vercel.app)
 - Network: Starknet Sepolia
 - Wallet flow: Cartridge Controller
+
+## Tutorial
+
+### 1. Go to the live game
+
+Open [https://bloc-duel.vercel.app](https://bloc-duel.vercel.app).
+
+### 2. Connect your Cartridge Controller
+
+Use Cartridge Controller to connect your wallet, then enter the game lobby.
+
+### 3. Create or join a game
+
+You can:
+- create a new match and share the game id
+- or join an existing lobby from the list
+
+Once both players are in, the draft starts immediately.
+
+### 4. Draft cards or invoke a hero
+
+Each turn, you choose exactly one main action:
+- **Play a drafted card** to get its effect
+- **Sell a drafted card** for instant capital
+- **Invoke a hero** instead of drafting a card
+
+The draft is shared. Every card you take changes what your opponent can still reach.
+
+Core card roles:
+- **AI** cards advance AGI
+- **MILITARY** cards move escalation
+- **ECONOMY** cards build capital or production
+- **SYSTEM** cards build toward bonuses and the 4-system win
+
+Heroes are big tempo swings:
+- they replace your normal draft for the turn
+- they cost resources plus a hero surcharge
+- they are meant to be high-impact moments, not routine buys
+
+### Win conditions
+
+You can win in four ways:
+- **AGI Breakthrough**: reach **7 AGI**
+- **Escalation Dominance**: push escalation to your side's edge
+- **Systems Dominance**: collect all **4 distinct system types**
+- **Points Lead**: if nobody wins early, lead on points after Age III
+
+Points are:
+- `AGI + distinct systems x2 + heroes`
+
+The game is best when you choose a lane early, race it hard, and deny the opponent's line when you can.
 
 ## Development
 
@@ -389,12 +457,16 @@ What we would likely try next:
 - unlock doctrines at either 2 different systems or 2 copies of the same system
 - make doctrines feel like real game-defining moments, not minor stat bumps
 - push doctrine effects toward sharper identity and interaction
+- make escalation ownership legible at a glance when only one side has moved the track
 
 Doctrine ideas worth testing:
 - **Diplomacy**: reset escalation to `0` for both sides
 - **Finance**: discarding cards gives `2x` capital
 - **Compute**: AGI cards cost `1` less
 - **Finance / hero economy**: remove excess payment friction when buying heroes
+
+UX clarity bug worth fixing:
+- when only one player has advanced escalation, the board should explicitly show which bloc currently owns that pressure instead of relying on the shared `1/6` counter alone
 
 ## Stack
 
