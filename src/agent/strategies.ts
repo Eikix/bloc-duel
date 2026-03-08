@@ -1,4 +1,4 @@
-import { getHeroSurcharge, isFreeViaChain } from '../game/rules'
+import { AGI_WIN_TARGET, getHeroSurcharge, isFreeViaChain } from '../game/rules'
 import type { Card } from '../game/cards'
 import type { Hero } from '../game/heroes'
 import type { AgentAction, AgentStrategy, MatchSnapshot, StrategyContext } from './types'
@@ -50,7 +50,7 @@ function estimateLineEta(snapshot: MatchSnapshot, playerIndex: 0 | 1, line: Stra
 
   switch (line) {
     case 'AGI':
-      return Math.max(0, 6 - snapshot.agiTrack[playerIndex]) * 3
+      return Math.max(0, AGI_WIN_TARGET - snapshot.agiTrack[playerIndex]) * 3
         - production.compute * 1.6
         - production.energy * 0.4
     case 'ESCALATION':

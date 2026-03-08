@@ -2,6 +2,9 @@ import type { Card, ResourceCost } from './cards'
 import type { Hero } from './heroes'
 import { isAvailable, type PyramidNode } from './pyramid'
 
+export const AGI_WIN_TARGET = 7
+export const HERO_SURCHARGE_STEP = 3
+
 export interface ProductionState {
   energy: number
   materials: number
@@ -73,7 +76,7 @@ export function getAvailableDraftNodes(pyramid: PyramidNode[]): PyramidNode[] {
 }
 
 export function getHeroSurcharge(player: HeroState): number {
-  return player.heroCount * 2
+  return player.heroCount * HERO_SURCHARGE_STEP
 }
 
 export function canAffordHero(

@@ -399,7 +399,7 @@ pub mod actions {
         player_index: u8,
         hero: @HeroData,
     ) {
-        let surcharge: u16 = (player.hero_count * 2).into();
+        let surcharge: u16 = (player.hero_count * 3).into();
         assert(
             player
                 .can_afford(*hero.energy_cost, *hero.materials_cost, *hero.compute_cost, surcharge),

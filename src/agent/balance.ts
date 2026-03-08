@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { logger, LogLevelIndex } from 'starknet'
 import { createAgentClient, resolveStrategy, type AgentAction, type AgentClientOptions, type MatchSnapshot } from './index'
 import { formatAgentAction } from './runtime'
 import { getHeroById } from '../game/heroes'
-import { isFreeViaChain } from '../game/rules'
+import { AGI_WIN_TARGET, isFreeViaChain } from '../game/rules'
 
 type KnownWinCondition = 'AgiBreakthrough' | 'EscalationDominance' | 'SystemsDominance' | 'Points'
 type RunStatus = 'completed' | 'stalled' | 'failed'
@@ -153,6 +154,11 @@ const DEFAULT_STRATEGIES = [
   'deny-systems',
   'adaptive-race',
 ]
+
+function configureStarknetLogging() {
+  const level = (process.env.BLOCDUEL_AGENT_LOG_LEVEL ?? 'OFF').toUpperCase()
+  logger.setLogLevel(level in LogLevelIndex ? level as keyof typeof LogLevelIndex : 'OFF')
+}
 
 function fail(message: string): never {
   throw new Error(message)
@@ -309,7 +315,7 @@ function getEscalationProgress(snapshot: MatchSnapshot, playerIndex: 0 | 1) {
 function getBestLineProgress(snapshot: MatchSnapshot, playerIndex: 0 | 1) {
   const player = snapshot.players[playerIndex]
   return Math.max(
-    snapshot.agiTrack[playerIndex] / 6,
+    snapshot.agiTrack[playerIndex] / AGI_WIN_TARGET,
     getEscalationProgress(snapshot, playerIndex),
     getDistinctSystems(snapshot, playerIndex) / 4,
     (snapshot.agiTrack[playerIndex] + getDistinctSystems(snapshot, playerIndex) + player.heroCount) / 10,
@@ -983,6 +989,8 @@ function readBatch(input?: string) {
 }
 
 async function main() {
+  configureStarknetLogging()
+
   const { options, positionals } = parseOptions(process.argv.slice(2))
   const command = positionals[0] ?? 'run'
 

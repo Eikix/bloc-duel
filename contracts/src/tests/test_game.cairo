@@ -179,7 +179,7 @@ mod tests {
 
         let mut game: Game = world.read_model(game_id);
         game.current_player = 0;
-        game.agi_one = 5;
+        game.agi_one = 6;
         world.write_model_test(@game);
 
         let mut pyramid: Pyramid = world.read_model(game_id);
@@ -546,7 +546,7 @@ mod tests {
 
         let mut game: Game = world.read_model(game_id);
         game.current_player = 1;
-        game.agi_two = 5;
+        game.agi_two = 6;
         world.write_model_test(@game);
 
         let mut pyramid: Pyramid = world.read_model(game_id);
@@ -699,7 +699,7 @@ mod tests {
 
         let p0_after: PlayerState = world.read_model((game_id, 0_u8));
         assert(p0_after.hero_count == 3, 'hero count');
-        assert(p0_after.capital == 11, 'surcharge net');
+        assert(p0_after.capital == 9, 'surcharge net');
     }
 
     #[test]
