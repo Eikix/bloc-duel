@@ -495,6 +495,9 @@ export function Game({ onBackHome }: GameProps) {
     : pointsDelta < 0
       ? `Behind by ${Math.abs(pointsDelta)}`
       : 'Tied right now'
+  const escalationRule = hudFocusCommander.player.faction === 'ATLANTIC'
+    ? 'Push escalation left to -6. If it reaches +6, you lose that race.'
+    : 'Push escalation right to +6. If it reaches -6, you lose that race.'
   const victoryTracks = [
     {
       key: 'agi',
@@ -511,7 +514,7 @@ export function Game({ onBackHome }: GameProps) {
       key: 'esc',
       glyph: HUD_GLYPHS.escalation,
       label: 'Escalation edge',
-      rule: 'Push escalation to your end of the track.',
+      rule: escalationRule,
       value: `${hudFocusCommander.escalation}/6`,
       progress: clampHudProgress(hudFocusCommander.escalation / 6),
       fillClass: 'hud-victory-fill-esc',
