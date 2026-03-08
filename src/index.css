@@ -63,6 +63,108 @@ body::after {
   background: radial-gradient(circle at center, transparent 46%, rgba(17, 32, 56, 0.18) 100%);
 }
 
+.home-stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.home-orbit {
+  position: fixed;
+  width: 38rem;
+  height: 38rem;
+  border-radius: 999px;
+  filter: blur(24px);
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+.home-orbit-left {
+  left: -14rem;
+  top: 4rem;
+  background:
+    radial-gradient(circle, rgba(47, 109, 246, 0.34), rgba(47, 109, 246, 0.05) 50%, transparent 72%);
+}
+
+.home-orbit-right {
+  right: -12rem;
+  bottom: -6rem;
+  background:
+    radial-gradient(circle, rgba(210, 106, 56, 0.3), rgba(210, 106, 56, 0.06) 48%, transparent 70%);
+}
+
+.mesh-panel {
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  background:
+    linear-gradient(135deg, rgba(248, 251, 255, 0.88), rgba(228, 236, 245, 0.8)),
+    radial-gradient(circle at top left, rgba(47, 109, 246, 0.08), transparent 42%),
+    radial-gradient(circle at bottom right, rgba(210, 106, 56, 0.08), transparent 40%);
+  box-shadow:
+    0 28px 60px rgba(61, 80, 106, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(18px);
+}
+
+.hero-glow {
+  position: absolute;
+  width: 20rem;
+  height: 20rem;
+  border-radius: 999px;
+  filter: blur(26px);
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.hero-glow-blue {
+  top: -5rem;
+  right: 14%;
+  background: radial-gradient(circle, rgba(47, 109, 246, 0.28), transparent 70%);
+}
+
+.hero-glow-orange {
+  bottom: -7rem;
+  left: 54%;
+  background: radial-gradient(circle, rgba(210, 106, 56, 0.24), transparent 70%);
+}
+
+.home-card {
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  background:
+    linear-gradient(180deg, rgba(250, 252, 255, 0.88), rgba(234, 240, 247, 0.8)),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.42), transparent 45%);
+  box-shadow:
+    0 20px 44px rgba(63, 81, 107, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+}
+
+.home-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0.55rem 0.85rem;
+  box-shadow:
+    0 14px 28px rgba(67, 86, 112, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.home-pill-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.home-pill-value {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--color-ink);
+}
+
 .game-topbar {
   position: sticky;
   top: 0.75rem;

@@ -94,7 +94,11 @@ function getBurnerIndexForAddress(address: string, burnerAddresses: string[]): n
   return burnerAddresses.findIndex((burnerAddress) => normalizeAddress(burnerAddress) === normalizedAddress)
 }
 
-export function Game() {
+interface GameProps {
+  onBackHome?: () => void
+}
+
+export function Game({ onBackHome }: GameProps) {
   const [runtime, setRuntimeState] = useState<BlocDuelRuntime | null>(null)
   const [isBootstrappingRuntime, setIsBootstrappingRuntime] = useState(true)
   const { walletMode } = getDojoConfig()
@@ -443,6 +447,17 @@ export function Game() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {onBackHome && (
+            <button
+              onClick={() => {
+                setSelectedGameId(null)
+                onBackHome()
+              }}
+              className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
+            >
+              Home
+            </button>
+          )}
           {selectedGameId !== null && (
             <button
               onClick={() => setSelectedGameId(null)}
