@@ -196,9 +196,9 @@ function CommanderHudCard({
       </div>
 
       <div className="mt-2 flex flex-wrap gap-2 font-mono text-[11px] text-white/72">
-        <span className="hud-inline-chip">{RESOURCE_ICONS.energy} {player.production.energy}</span>
-        <span className="hud-inline-chip">{RESOURCE_ICONS.materials} {player.production.materials}</span>
-        <span className="hud-inline-chip">{RESOURCE_ICONS.compute} {player.production.compute}</span>
+        <span className="hud-inline-chip">{RESOURCE_ICONS.energy} {player.production.energy}/turn</span>
+        <span className="hud-inline-chip">{RESOURCE_ICONS.materials} {player.production.materials}/turn</span>
+        <span className="hud-inline-chip">{RESOURCE_ICONS.compute} {player.production.compute}/turn</span>
         <span className="hud-inline-chip">{HUD_GLYPHS.points} {projectedPoints}</span>
       </div>
     </div>
@@ -964,28 +964,28 @@ export function Game({ onBackHome }: GameProps) {
                   <div className="hud-top-stat hud-top-stat-capital">
                     <span className="hud-top-stat-icon hud-top-stat-icon-capital">{HUD_GLYPHS.capital}</span>
                     <span className="hud-top-stat-body">
-                      <span className="hud-top-stat-label">Capital</span>
+                      <span className="hud-top-stat-label">Capital now</span>
                       <span className="hud-top-stat-value">{hudFocusPlayer.capital}</span>
                     </span>
                   </div>
                   <div className="hud-top-stat hud-top-stat-energy">
                     <span className="hud-top-stat-icon hud-top-stat-icon-energy">{RESOURCE_ICONS.energy}</span>
                     <span className="hud-top-stat-body">
-                      <span className="hud-top-stat-label">Energy</span>
+                      <span className="hud-top-stat-label">Energy/turn</span>
                       <span className="hud-top-stat-value">{hudFocusPlayer.production.energy}</span>
                     </span>
                   </div>
                   <div className="hud-top-stat hud-top-stat-materials">
                     <span className="hud-top-stat-icon hud-top-stat-icon-materials">{RESOURCE_ICONS.materials}</span>
                     <span className="hud-top-stat-body">
-                      <span className="hud-top-stat-label">Materials</span>
+                      <span className="hud-top-stat-label">Materials/turn</span>
                       <span className="hud-top-stat-value">{hudFocusPlayer.production.materials}</span>
                     </span>
                   </div>
                   <div className="hud-top-stat hud-top-stat-compute">
                     <span className="hud-top-stat-icon hud-top-stat-icon-compute">{RESOURCE_ICONS.compute}</span>
                     <span className="hud-top-stat-body">
-                      <span className="hud-top-stat-label">Compute</span>
+                      <span className="hud-top-stat-label">Compute/turn</span>
                       <span className="hud-top-stat-value">{hudFocusPlayer.production.compute}</span>
                     </span>
                   </div>
