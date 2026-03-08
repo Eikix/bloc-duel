@@ -41,7 +41,7 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
         : 'border border-white/80 bg-white/58'
     const cardSizeClass = immersive
       ? compact
-        ? 'h-[7rem] w-[5rem]'
+        ? 'h-[7.6rem] w-[5.4rem]'
         : 'h-[7.8rem] w-[5.5rem]'
       : compact
         ? 'h-[6.3rem] w-[4.5rem]'
@@ -55,7 +55,7 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
             isHighlighted
               ? 'border-blue-300/70 bg-[linear-gradient(135deg,rgba(23,46,91,0.64),rgba(13,27,52,0.42))] shadow-[0_20px_35px_rgba(59,130,246,0.2),inset_0_1px_0_rgba(255,255,255,0.12)]'
               : ''
-          } ${laneClassName} ${compact ? 'min-h-[118px] py-3' : 'min-h-[132px] py-4'}`}
+          } ${laneClassName} ${compact ? 'min-h-[128px] py-3' : 'min-h-[132px] py-4'}`}
         >
           {isHighlighted && targetLabel && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
