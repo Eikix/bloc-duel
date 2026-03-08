@@ -111,7 +111,7 @@ export default function Card({
         pressStartRef.current = { x: event.clientX, y: event.clientY }
       }}
       className={`
-        relative h-[8rem] w-[5.7rem] overflow-hidden rounded-[22px] border ${style.frame} bg-slate-950
+        relative h-[6.6rem] w-[4.65rem] overflow-hidden rounded-[22px] border ${style.frame} bg-slate-950
         flex flex-col select-none transition-shadow duration-150 sm:h-[8.35rem] sm:w-[5.95rem] md:h-[8.85rem] md:w-[6.3rem] lg:h-[9.4rem] lg:w-[6.7rem] xl:h-[10rem] xl:w-[7.1rem] 2xl:h-[10.7rem] 2xl:w-[7.6rem]
         ${selected ? 'ring-2 ring-atlantic/70 ring-offset-2 ring-offset-slate-900/75' : ''}
         ${canDrag ? `cursor-grab ${style.glow}` : ''}
@@ -157,10 +157,10 @@ export default function Card({
 
       <div className="relative flex h-full flex-col p-1.5 sm:p-2 md:p-2.5">
         <div className="flex items-start justify-between gap-2">
-          <span className={`rounded-full px-1.5 py-0.5 font-mono text-[7px] font-bold uppercase tracking-[0.14em] shadow-[0_4px_12px_rgba(0,0,0,0.16)] sm:text-[7.5px] ${style.chip}`}>
+          <span className={`rounded-full px-1 py-0.5 font-mono text-[6px] font-bold uppercase tracking-[0.14em] shadow-[0_4px_12px_rgba(0,0,0,0.16)] sm:px-1.5 sm:text-[7.5px] ${style.chip}`}>
             {card.type.slice(0, 3)}
           </span>
-          <span className="rounded-full border border-white/12 bg-black/28 px-1.5 py-0.5 font-mono text-[7px] font-semibold text-white/88 backdrop-blur-[4px] shadow-[0_4px_12px_rgba(0,0,0,0.14)] sm:text-[7.5px]">
+          <span className="rounded-full border border-white/12 bg-black/28 px-1 py-0.5 font-mono text-[6px] font-semibold text-white/88 backdrop-blur-[4px] shadow-[0_4px_12px_rgba(0,0,0,0.14)] sm:px-1.5 sm:text-[7.5px]">
             {isFree ? 'FREE' : formatCost(displayCost)}
           </span>
         </div>
@@ -168,16 +168,16 @@ export default function Card({
         <div className="mt-auto px-0.5 pb-0.5 sm:px-1 sm:pb-1">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
             <div className="min-w-0">
-              <p className={`font-display text-[9px] font-black leading-[0.96] drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] ${style.text} sm:text-[10px] md:text-[11px] lg:text-[12px] xl:text-[13px] 2xl:text-[14px]`}>
+              <p className={`font-display text-[8px] font-black leading-[0.96] drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] ${style.text} sm:text-[10px] md:text-[11px] lg:text-[12px] xl:text-[13px] 2xl:text-[14px]`}>
                 {card.name}
               </p>
 
               <div className="mt-1 flex flex-wrap items-center gap-1">
                 {card.chainTo !== undefined && (
-                  <span className="rounded-full border border-violet-200/24 bg-violet-400/12 px-1 py-0.5 font-mono text-[6px] font-bold tracking-[0.08em] text-violet-50/92 sm:text-[6.5px]">CHAIN</span>
+                  <span className="rounded-full border border-violet-200/24 bg-violet-400/12 px-1 py-0.5 font-mono text-[5px] font-bold tracking-[0.08em] text-violet-50/92 sm:text-[6.5px]">CHAIN</span>
                 )}
                 {isFreeViaChain && (
-                  <span className="rounded-full border border-emerald-200/24 bg-emerald-400/12 px-1 py-0.5 font-mono text-[6px] font-bold tracking-[0.08em] text-emerald-50/92 sm:text-[6.5px]">FREE</span>
+                  <span className="rounded-full border border-emerald-200/24 bg-emerald-400/12 px-1 py-0.5 font-mono text-[5px] font-bold tracking-[0.08em] text-emerald-50/92 sm:text-[6.5px]">FREE</span>
                 )}
               </div>
             </div>
@@ -187,7 +187,7 @@ export default function Card({
                 {compactEffects.map((effect) => (
                   <span
                     key={effect}
-                    className="rounded-full border border-white/12 bg-black/26 px-1.5 py-0.5 font-mono text-[6px] font-bold leading-none text-white/86 backdrop-blur-[4px] sm:text-[6.5px] md:text-[7px]"
+                    className="rounded-full border border-white/12 bg-black/26 px-1 py-0.5 font-mono text-[5px] font-bold leading-none text-white/86 backdrop-blur-[4px] sm:px-1.5 sm:text-[6.5px] md:text-[7px]"
                   >
                     {effect}
                   </span>

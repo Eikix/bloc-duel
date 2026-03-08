@@ -576,7 +576,7 @@ export function Game({ onBackHome }: GameProps) {
   }, [isBattleView])
 
   return (
-    <div className={`game-shell relative isolate flex flex-col text-ink ${isBattleView ? 'h-screen overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
+    <div className={`game-shell relative isolate flex flex-col text-ink ${isBattleView ? 'min-h-screen overflow-x-hidden md:h-screen md:overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
       {isBattleView && !isBootstrappingRuntime && (
         <StrategicMapBackground
           age={age}
@@ -926,14 +926,14 @@ export function Game({ onBackHome }: GameProps) {
           </section>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 px-2 pb-2 pt-2 md:px-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 pt-2 md:overflow-hidden md:px-3">
           {isLoadingGame && (
             <div className="mb-3 w-full rounded-2xl border border-white/70 bg-white/72 px-4 py-3 font-mono text-xs text-ink-faint shadow-[0_12px_22px_rgba(72,93,119,0.08)]">
               Syncing live game state...
             </div>
           )}
 
-          <div className="flex h-full w-full flex-col gap-3 overflow-hidden">
+          <div className="flex min-h-full w-full flex-col gap-3 md:h-full md:overflow-hidden">
             <section className="hud-compact-bar rounded-[20px] px-2.5 py-1.5 md:px-3 md:py-1.5">
               <div className="flex items-center gap-2">
                 <div className="flex shrink-0 items-center gap-2">
@@ -1112,7 +1112,7 @@ export function Game({ onBackHome }: GameProps) {
                 />
               </aside>
 
-              <section className="table-surface table-surface-battle relative min-h-0 overflow-hidden rounded-[34px] px-4 py-4 md:px-6 md:py-5">
+              <section className="table-surface table-surface-battle relative min-h-0 overflow-visible rounded-[34px] px-3 py-3 md:overflow-hidden md:px-6 md:py-5">
                 <div className="relative z-10 flex h-full min-h-0 flex-col">
                   <PlayField
                     playerIndex={topPlayer}
@@ -1123,9 +1123,9 @@ export function Game({ onBackHome }: GameProps) {
                     onInspectCard={inspectCard}
                   />
 
-                  <div className="relative my-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
+                  <div className="relative my-3 flex min-h-0 flex-1 items-center justify-center overflow-x-auto overflow-y-hidden rounded-[30px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-2 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] md:my-4 md:overflow-hidden md:px-4 md:py-5">
                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_30%,rgba(8,18,34,0.12))]" />
-                    <div className="relative z-10 flex w-full justify-center">
+                    <div className="relative z-10 flex min-w-fit justify-center md:w-full">
                       <CardPyramid
                         key={`${selectedGameId ?? 'none'}-${age}`}
                         dropRefs={dropRefs}

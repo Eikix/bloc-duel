@@ -41,7 +41,7 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
         : 'border border-white/80 bg-white/58'
     const cardSizeClass = immersive
       ? compact
-        ? 'h-[7.6rem] w-[5.4rem]'
+        ? 'h-[6.2rem] w-[4.4rem] sm:h-[7.6rem] sm:w-[5.4rem]'
         : 'h-[7.8rem] w-[5.5rem]'
       : compact
         ? 'h-[6.3rem] w-[4.5rem]'
