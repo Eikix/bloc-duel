@@ -1,4 +1,5 @@
-import baseManifest from '../../contracts/manifest_dev.json'
+import devManifest from '../../contracts/manifest_dev.json'
+import mainnetManifest from '../../contracts/manifest_mainnet.json'
 
 const ACTIONS_TAG = 'bloc_duel-actions'
 const LOCAL_NODE_URL = 'http://127.0.0.1:5050'
@@ -6,6 +7,12 @@ const LOCAL_TORII_URL = 'http://127.0.0.1:8080'
 
 export type StarknetNetwork = 'katana' | 'sepolia' | 'mainnet'
 export type WalletMode = 'burner' | 'controller'
+type DojoManifestProfile = 'dev' | 'mainnet'
+
+const MANIFESTS = {
+  dev: devManifest,
+  mainnet: mainnetManifest,
+} as const
 
 const DEFAULT_RPC_URLS: Record<StarknetNetwork, string> = {
   katana: LOCAL_NODE_URL,
@@ -43,6 +50,19 @@ function normalizeNetworkHint(value: string | undefined): StarknetNetwork | unde
   }
 }
 
+function normalizeManifestProfile(value: string | undefined): DojoManifestProfile | undefined {
+  switch (value?.trim().toLowerCase()) {
+    case 'dev':
+    case 'local':
+    case 'katana':
+      return 'dev'
+    case 'mainnet':
+      return 'mainnet'
+    default:
+      return undefined
+  }
+}
+
 function inferNetwork(rpcUrlHint: string | undefined, toriiUrl: string): StarknetNetwork {
   const hintedNetwork = normalizeNetworkHint(
     pickEnv(
@@ -58,6 +78,10 @@ function inferNetwork(rpcUrlHint: string | undefined, toriiUrl: string): Starkne
   if (rpcUrlHint?.includes('sepolia') || toriiUrl.includes('sepolia')) return 'sepolia'
   if (rpcUrlHint?.includes('mainnet') || toriiUrl.includes('mainnet')) return 'mainnet'
   return 'mainnet'
+}
+
+function getWalletMode(network: StarknetNetwork): WalletMode {
+  return network === 'katana' ? 'burner' : 'controller'
 }
 
 function buildDojoConfig() {
@@ -77,8 +101,15 @@ function buildDojoConfig() {
   )
 
   const network = inferNetwork(rpcUrlHint, toriiUrl)
+  const manifestProfile = normalizeManifestProfile(
+    pickEnv(
+      import.meta.env.VITE_PUBLIC_DOJO_MANIFEST_PROFILE,
+      import.meta.env.PUBLIC_DOJO_MANIFEST_PROFILE,
+    ),
+  ) ?? (network === 'mainnet' ? 'mainnet' : 'dev')
+  const baseManifest = MANIFESTS[manifestProfile]
   const rpcUrl = pickEnv(rpcUrlHint, DEFAULT_RPC_URLS[network])!
-  const walletMode: WalletMode = network === 'katana' ? 'burner' : 'controller'
+  const walletMode = getWalletMode(network)
 
   const worldAddress = pickEnv(
     import.meta.env.VITE_PUBLIC_WORLD_ADDRESS,
@@ -153,4 +184,15 @@ export const MODEL_TAGS = {
 
 export function getNamespacedModelTag(tag: (typeof MODEL_TAGS)[keyof typeof MODEL_TAGS]): string {
   return `${getDojoConfig().namespace}-${tag}`
+}
+
+export function getTransactionExplorerUrl(transactionHash: string): string | null {
+  switch (getDojoConfig().network) {
+    case 'mainnet':
+      return `https://voyager.online/tx/${transactionHash}`
+    case 'sepolia':
+      return `https://sepolia.voyager.online/tx/${transactionHash}`
+    case 'katana':
+      return null
+  }
 }

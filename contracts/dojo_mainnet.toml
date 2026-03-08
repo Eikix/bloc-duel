@@ -8,10 +8,8 @@ default = "bloc_duel"
 
 [env]
 rpc_url = "https://api.cartridge.gg/x/starknet/mainnet"
-account_address = "0x0"  # Set before deploying
-private_key = "0x0"      # Set before deploying
-# world_address = "0x0"  # Set after first deployment
-# world_block = 0        # Set after first deployment
+world_address = "0x06fff60523a74c9be62f2a06554449a5b9bc2dd54ef7be1de6dabe15eb6bf720"  # Set after first deployment
+world_block = 7504083        # Set after first deployment
 
 [writers]
 "bloc_duel" = ["bloc_duel-actions"]

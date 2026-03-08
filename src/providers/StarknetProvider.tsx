@@ -7,6 +7,8 @@ import { fetchKatanaAccounts, getBurnerAddress, pickBurnerIndex, rememberBurnerI
 import { getDojoConfig, type BlocDuelConfig } from '../dojo/config'
 import { BurnerWalletContext } from './burnerWallet'
 
+const KATANA_CHAIN_ID = '0x4b4154414e41'
+
 interface WalletSetup {
   chain: Chain
   connectors: Connector[]
@@ -24,8 +26,10 @@ interface BurnerConnectorSetup {
 function createKatanaChain(rpcUrl: string): Chain {
   return {
     ...devnet,
+    id: BigInt(KATANA_CHAIN_ID),
     name: 'Katana Local',
     network: 'katana',
+    testnet: true,
     rpcUrls: {
       ...devnet.rpcUrls,
       default: { http: [rpcUrl] },
@@ -66,7 +70,7 @@ async function createBurnerConnector(config: BlocDuelConfig): Promise<BurnerConn
     },
   })
 
-  connector.switchChain(devnet.id)
+  connector.switchChain(BigInt(KATANA_CHAIN_ID))
   connector.switchAccount(burnerIndex)
   rememberBurnerIndex(burnerIndex, accounts.length)
 
@@ -78,14 +82,36 @@ async function createBurnerConnector(config: BlocDuelConfig): Promise<BurnerConn
 }
 
 function createControllerConnector(config: BlocDuelConfig): ControllerConnector {
+  const policies = {
+    contracts: {
+      [config.actionsAddress]: {
+        name: 'Bloc Duel Actions',
+        description: 'Core match actions for creating and playing Bloc Duel matches.',
+        methods: [
+          { name: 'Create Game', entrypoint: 'create_game', description: 'Create a new Bloc Duel lobby.' },
+          { name: 'Join Game', entrypoint: 'join_game', description: 'Join an existing Bloc Duel lobby.' },
+          { name: 'Play Card', entrypoint: 'play_card', description: 'Deploy a drafted card to the board.' },
+          { name: 'Discard Card', entrypoint: 'discard_card', description: 'Sell a drafted card for capital.' },
+          { name: 'Invoke Hero', entrypoint: 'invoke_hero', description: 'Spend capital to invoke a hero.' },
+          { name: 'Choose System Bonus', entrypoint: 'choose_system_bonus', description: 'Resolve a system pair bonus.' },
+          { name: 'Next Age', entrypoint: 'next_age', description: 'Advance the match into the next age.' },
+        ],
+      },
+    },
+  }
+
   return new ControllerConnector({
     chains: [{ rpcUrl: config.rpcUrl }],
     defaultChainId:
       config.network === 'mainnet'
         ? constants.StarknetChainId.SN_MAIN
+        : config.network === 'katana'
+          ? KATANA_CHAIN_ID
         : constants.StarknetChainId.SN_SEPOLIA,
+    errorDisplayMode: 'notification',
     lazyload: true,
     namespace: config.namespace,
+    policies,
     slot: config.slot,
   })
 }

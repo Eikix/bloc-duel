@@ -34,7 +34,7 @@ const ActionDock = forwardRef<HTMLDivElement, ActionDockProps>(function ActionDo
     <div
       ref={ref}
       className={`
-        flex h-24 w-24 shrink-0 flex-col items-center justify-center rounded-[26px] border-2 border-dashed
+        flex h-28 w-28 shrink-0 flex-col items-center justify-center rounded-[30px] border-2 border-dashed
         bg-white/62 text-center backdrop-blur-sm transition-all duration-200
         ${style.border}
         ${isHighlighted ? `${style.bg} ${style.shadow} scale-[1.04]` : 'shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]'}

@@ -20,6 +20,7 @@ What it does:
 - Starts Torii indexer (port 8080)
 - Installs npm deps if needed
 - Starts Vite dev server (port 5173)
+- Uses local Katana burner accounts instead of Cartridge Controller
 
 **When to use:** Day-to-day local development. No mainnet costs, fast iteration.
 
