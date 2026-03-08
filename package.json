@@ -22,6 +22,9 @@
     "agent:watch": "npm run agent:local -- match watch",
     "agent:selfplay": "npm run agent:local -- match selfplay --json",
     "agent:validate": "npm run agent:build --silent && node scripts/validate-agent-sdk.mjs",
+    "balance:build": "esbuild src/agent/balance.ts --bundle --packages=external --platform=node --format=esm --outfile=dist-agent/balance.js",
+    "balance:run": "npm run balance:build --silent && node --no-warnings dist-agent/balance.js run",
+    "balance:report": "npm run balance:build --silent && node --no-warnings dist-agent/balance.js report",
     "lint": "eslint .",
     "preview": "vite preview"
   },

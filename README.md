@@ -192,6 +192,61 @@ This covers:
 
 The full self-play loop is currently correct but still slow on local Katana/Torii. Expect repeated validation runs to take a few minutes until that throughput issue is improved.
 
+## Balance Lab
+
+The repo also ships a local balance harness on top of the headless SDK. It runs full match batches, collects telemetry, and scores the results against a mixed-win target meta.
+
+Main commands:
+
+```bash
+npm run balance:run
+npm run balance:report
+```
+
+What `balance:run` does:
+- runs many full local games across a strategy matrix
+- writes machine-readable JSON to `.data/balance/latest.json`
+- prints a readable scorecard and representative sample list
+- exits non-zero if any match stalls or fails
+
+Useful options:
+
+```bash
+npm run balance:run -- --games 28 --seed lab-a
+npm run balance:run -- --strategies race-agi,race-escalation,race-systems,adaptive-race
+npm run balance:report -- --input .data/balance/latest.json
+```
+
+Environment overrides:
+- `BLOCDUEL_BALANCE_GAMES`
+- `BLOCDUEL_BALANCE_SEED`
+- `BLOCDUEL_BALANCE_STRATEGIES`
+- `BLOCDUEL_BALANCE_MAX_ACTIONS`
+- `BLOCDUEL_BALANCE_MAX_IDLE_POLLS`
+- `BLOCDUEL_BALANCE_POLL_INTERVAL_MS`
+- `BLOCDUEL_BALANCE_OUTPUT`
+
+The balance lab focuses on:
+- win-condition distribution
+- ending age distribution
+- average turns
+- first-player advantage
+- discard and chain usage
+- hero usage and hero win contribution
+- abrupt ending rate
+- matchup win rates
+
+Bundled balance strategies:
+- `race-agi`
+- `race-escalation`
+- `race-systems`
+- `deny-agi`
+- `deny-escalation`
+- `deny-systems`
+- `adaptive-race`
+
+`balanced` still exists as a legacy smoke bot, but it is not the main balance signal.
+
 ## How It Works
 
 Two rival blocs — **Atlantic** and **Continental** — compete across three ages. Each age deals 10 cards into a pyramid. Players take turns drafting: **play** a card for its effect, or **sell** it for capital.
