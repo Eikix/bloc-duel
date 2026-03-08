@@ -8,6 +8,7 @@ const LOCAL_TORII_URL = 'http://127.0.0.1:8080'
 export type StarknetNetwork = 'katana' | 'sepolia' | 'mainnet'
 export type WalletMode = 'burner' | 'controller'
 type DojoManifestProfile = 'dev' | 'mainnet'
+type EnvBag = Record<string, string | undefined>
 
 const MANIFESTS = {
   dev: devManifest,
@@ -22,6 +23,24 @@ const DEFAULT_RPC_URLS: Record<StarknetNetwork, string> = {
 
 function pickEnv(...values: Array<string | undefined>): string | undefined {
   return values.find((value) => value && value.trim().length > 0)
+}
+
+function getImportMetaEnv(): EnvBag {
+  return ((import.meta as ImportMeta & { env?: EnvBag }).env ?? {})
+}
+
+function getProcessEnv(): EnvBag {
+  const scope = globalThis as { process?: { env?: EnvBag } }
+  return scope.process?.env ?? {}
+}
+
+function readEnv(...keys: string[]): string | undefined {
+  const importMetaEnv = getImportMetaEnv()
+  const processEnv = getProcessEnv()
+  return pickEnv(
+    ...keys.map((key) => importMetaEnv[key]),
+    ...keys.map((key) => processEnv[key]),
+  )
 }
 
 function trimTrailingSlash(value: string): string {
@@ -66,10 +85,12 @@ function normalizeManifestProfile(value: string | undefined): DojoManifestProfil
 function inferNetwork(rpcUrlHint: string | undefined, toriiUrl: string): StarknetNetwork {
   const hintedNetwork = normalizeNetworkHint(
     pickEnv(
-      import.meta.env.VITE_PUBLIC_STARKNET_NETWORK,
-      import.meta.env.PUBLIC_STARKNET_NETWORK,
-      import.meta.env.VITE_PUBLIC_DEPLOY_TYPE,
-      import.meta.env.PUBLIC_DEPLOY_TYPE,
+      readEnv(
+        'VITE_PUBLIC_STARKNET_NETWORK',
+        'PUBLIC_STARKNET_NETWORK',
+        'VITE_PUBLIC_DEPLOY_TYPE',
+        'PUBLIC_DEPLOY_TYPE',
+      ),
     ),
   )
 
@@ -84,55 +105,58 @@ function getWalletMode(network: StarknetNetwork): WalletMode {
   return network === 'katana' ? 'burner' : 'controller'
 }
 
-function buildDojoConfig() {
+export interface BlocDuelConfigOverride {
+  network?: StarknetNetwork
+  walletMode?: WalletMode
+  rpcUrl?: string
+  toriiUrl?: string
+  worldAddress?: string
+  actionsAddress?: string
+  namespace?: string
+  slot?: string
+  manifestProfile?: DojoManifestProfile
+}
+
+function buildDojoConfig(overrides: BlocDuelConfigOverride = {}) {
   const toriiUrl = trimTrailingSlash(
     pickEnv(
-      import.meta.env.VITE_PUBLIC_TORII_URL,
-      import.meta.env.PUBLIC_TORII_URL,
-      import.meta.env.VITE_PUBLIC_TORII,
-      import.meta.env.PUBLIC_TORII,
+      overrides.toriiUrl,
+      readEnv('VITE_PUBLIC_TORII_URL', 'PUBLIC_TORII_URL', 'VITE_PUBLIC_TORII', 'PUBLIC_TORII'),
       LOCAL_TORII_URL,
     )!,
   )
 
-  const rpcUrlHint = pickEnv(
-    import.meta.env.VITE_PUBLIC_NODE_URL,
-    import.meta.env.PUBLIC_NODE_URL,
-  )
+  const rpcUrlHint = pickEnv(overrides.rpcUrl, readEnv('VITE_PUBLIC_NODE_URL', 'PUBLIC_NODE_URL'))
 
-  const network = inferNetwork(rpcUrlHint, toriiUrl)
-  const manifestProfile = normalizeManifestProfile(
+  const network = overrides.network ?? inferNetwork(rpcUrlHint, toriiUrl)
+  const manifestProfile = overrides.manifestProfile ?? normalizeManifestProfile(
     pickEnv(
-      import.meta.env.VITE_PUBLIC_DOJO_MANIFEST_PROFILE,
-      import.meta.env.PUBLIC_DOJO_MANIFEST_PROFILE,
+      readEnv('VITE_PUBLIC_DOJO_MANIFEST_PROFILE', 'PUBLIC_DOJO_MANIFEST_PROFILE'),
     ),
   ) ?? (network === 'mainnet' ? 'mainnet' : 'dev')
   const baseManifest = MANIFESTS[manifestProfile]
   const rpcUrl = pickEnv(rpcUrlHint, DEFAULT_RPC_URLS[network])!
-  const walletMode = getWalletMode(network)
+  const walletMode = overrides.walletMode ?? getWalletMode(network)
 
   const worldAddress = pickEnv(
-    import.meta.env.VITE_PUBLIC_WORLD_ADDRESS,
-    import.meta.env.PUBLIC_WORLD_ADDRESS,
+    overrides.worldAddress,
+    readEnv('VITE_PUBLIC_WORLD_ADDRESS', 'PUBLIC_WORLD_ADDRESS'),
     baseManifest.world.address,
   )!
 
   const actionsAddress = pickEnv(
-    import.meta.env.VITE_PUBLIC_ACTIONS_ADDRESS,
-    import.meta.env.PUBLIC_ACTIONS_ADDRESS,
+    overrides.actionsAddress,
+    readEnv('VITE_PUBLIC_ACTIONS_ADDRESS', 'PUBLIC_ACTIONS_ADDRESS'),
     baseManifest.contracts.find((contract) => contract.tag === ACTIONS_TAG)?.address,
   )!
 
   const namespace = pickEnv(
-    import.meta.env.VITE_PUBLIC_NAMESPACE,
-    import.meta.env.PUBLIC_NAMESPACE,
+    overrides.namespace,
+    readEnv('VITE_PUBLIC_NAMESPACE', 'PUBLIC_NAMESPACE'),
     'bloc_duel',
   )!
 
-  const slot = pickEnv(
-    import.meta.env.VITE_PUBLIC_SLOT,
-    import.meta.env.PUBLIC_SLOT,
-  )
+  const slot = pickEnv(overrides.slot, readEnv('VITE_PUBLIC_SLOT', 'PUBLIC_SLOT'))
 
   const manifest = {
     ...baseManifest,
@@ -172,6 +196,10 @@ export function getDojoConfig() {
   return cachedConfig
 }
 
+export function resolveDojoConfig(overrides: BlocDuelConfigOverride = {}) {
+  return buildDojoConfig(overrides)
+}
+
 export type BlocDuelConfig = ReturnType<typeof getDojoConfig>
 
 export const MODEL_TAGS = {
@@ -184,6 +212,13 @@ export const MODEL_TAGS = {
 
 export function getNamespacedModelTag(tag: (typeof MODEL_TAGS)[keyof typeof MODEL_TAGS]): string {
   return `${getDojoConfig().namespace}-${tag}`
+}
+
+export function resolveNamespacedModelTag(
+  tag: (typeof MODEL_TAGS)[keyof typeof MODEL_TAGS],
+  namespace: string = getDojoConfig().namespace,
+): string {
+  return `${namespace}-${tag}`
 }
 
 export function getTransactionExplorerUrl(transactionHash: string): string | null {
