@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { AGI_WIN_TARGET, getHeroSurcharge, getProjectedPoints } from '../game/rules'
 import { useGameStore, canAfford } from '../store/gameStore'
 import { RESOURCE_ICONS } from '../game/format'
 import SystemsPanel from './SystemsPanel'
@@ -26,11 +27,11 @@ export default function PlayerStatsBar({ playerIndex, isBottom }: PlayerStatsBar
   const statusGlow = isAtlantic ? 'shadow-[0_18px_32px_rgba(47,109,246,0.12)]' : 'shadow-[0_18px_32px_rgba(210,106,56,0.14)]'
 
   const prod = player.production
-  const surcharge = player.heroCount * 2
+  const surcharge = getHeroSurcharge(player)
   const hasAffordableHero = availableHeroes.some((hero) => canAfford(player, hero.cost, surcharge))
   const agiProgress = agiTrack[playerIndex]
   const systemsOnline = new Set(player.systems).size
-  const projectedPoints = agiProgress + systemsOnline + player.heroCount
+  const projectedPoints = getProjectedPoints(player, agiProgress)
   const factionWash = isAtlantic
     ? 'bg-[radial-gradient(circle_at_left,rgba(47,109,246,0.18),transparent_72%)]'
     : 'bg-[radial-gradient(circle_at_left,rgba(210,106,56,0.18),transparent_72%)]'
@@ -113,7 +114,7 @@ export default function PlayerStatsBar({ playerIndex, isBottom }: PlayerStatsBar
           <div className="rounded-[24px] border border-white/75 bg-white/72 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
             <p className="section-label mb-2">Victory pressure</p>
             <div className="flex flex-wrap gap-2">
-              <span className={metricChip}>AGI {agiProgress}/6</span>
+              <span className={metricChip}>AGI {agiProgress}/{AGI_WIN_TARGET}</span>
               <span className={metricChip}>Systems {systemsOnline}/4</span>
               <span className={metricChip}>Heroes {player.heroCount}</span>
             </div>
@@ -123,7 +124,7 @@ export default function PlayerStatsBar({ playerIndex, isBottom }: PlayerStatsBar
                 <p className="font-mono text-[10px] text-ink-faint">Age III fallback score</p>
               </div>
               <p className="max-w-[10rem] text-right font-mono text-[10px] text-ink-faint">
-                Points = AGI + distinct systems + heroes
+                Points = AGI + distinct systems x2 + heroes
               </p>
             </div>
           </div>

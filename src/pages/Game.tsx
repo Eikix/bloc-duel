@@ -10,6 +10,7 @@ import SystemBonusChoice from '../components/SystemBonusChoice'
 import { useBlocDuelLifecycle } from '../hooks/useBlocDuel'
 import type { Card as GameCard } from '../game/cards'
 import { RESOURCE_ICONS } from '../game/format'
+import { AGI_WIN_TARGET, getHeroSurcharge, getProjectedPoints } from '../game/rules'
 import { ALL_SYSTEM_TYPES } from '../game/systems'
 import {
   isZeroAddress,
@@ -45,9 +46,9 @@ const TURN_FLOW = [
 ] as const
 
 const WIN_PATHS = [
-  'AGI to 6',
+  `AGI to ${AGI_WIN_TARGET}`,
   'Escalation to your edge',
-  'All 4 system types',
+  'All 4 distinct system types',
   'Most points after Age III',
 ] as const
 
@@ -108,7 +109,7 @@ function countDistinctSystems(player: Pick<GamePlayer, 'systems'>): number {
 }
 
 function getPointsProjection(player: GamePlayer, agiValue: number): number {
-  return agiValue + countDistinctSystems(player) + player.heroCount
+  return getProjectedPoints(player, agiValue)
 }
 
 function getEscalationPressure(playerIndex: 0 | 1, escalation: number): number {
@@ -183,7 +184,7 @@ function CommanderHudCard({
         </div>
         <div className="hud-resource-cell hud-resource-cell-compact">
           <span className="hud-resource-label">{HUD_GLYPHS.agi} AGI</span>
-          <span className="hud-resource-value">{agi}/6</span>
+          <span className="hud-resource-value">{agi}/{AGI_WIN_TARGET}</span>
         </div>
         <div className="hud-resource-cell hud-resource-cell-compact">
           <span className="hud-resource-label">{HUD_GLYPHS.systems} Sys</span>
@@ -335,6 +336,7 @@ export function Game({ onBackHome }: GameProps) {
     selectedCard,
     pyramid,
     availableHeroes,
+    heroReveal,
     systemBonusChoice,
     isLoadingGames,
     isLoadingGame,
@@ -353,6 +355,7 @@ export function Game({ onBackHome }: GameProps) {
     nextAge,
     setSelectedGameId,
     clearError,
+    clearHeroReveal,
   } = useGameStore()
 
   const bottomPlayer = localPlayerIndex ?? currentPlayer
@@ -425,12 +428,16 @@ export function Game({ onBackHome }: GameProps) {
           : 'Create or join a game. The draft begins as soon as both commanders are seated.'
 
   const localPlayer = localPlayerIndex !== null ? players[localPlayerIndex] : null
-  const localHeroSurcharge = localPlayer?.heroCount ? localPlayer.heroCount * 2 : 0
+  const localHeroSurcharge = localPlayer ? getHeroSurcharge(localPlayer) : 0
   const canInvokeHero = localPlayer !== null
     && isCurrentUserTurn
     && phase === 'DRAFTING'
     && availableHeroes.length > 0
     && availableHeroes.some((hero) => canAfford(localPlayer, hero.cost, localHeroSurcharge))
+  const canOpenHeroPicker = localPlayer !== null
+    && isCurrentUserTurn
+    && phase === 'DRAFTING'
+    && availableHeroes.length > 0
   const hudFocusPlayer = localPlayer ?? players[bottomPlayer]
   const hudFocusPlayerIndex: 0 | 1 = localPlayerIndex ?? bottomPlayer
 
@@ -494,14 +501,17 @@ export function Game({ onBackHome }: GameProps) {
     : pointsDelta < 0
       ? `Behind by ${Math.abs(pointsDelta)}`
       : 'Tied right now'
+  const escalationRule = hudFocusCommander.player.faction === 'ATLANTIC'
+    ? 'Push escalation left to -6. If it reaches +6, you lose that race.'
+    : 'Push escalation right to +6. If it reaches -6, you lose that race.'
   const victoryTracks = [
     {
       key: 'agi',
       glyph: HUD_GLYPHS.agi,
       label: 'AGI breakthrough',
-      rule: 'Reach 6 AGI to win immediately.',
-      value: `${hudFocusCommander.agi}/6`,
-      progress: clampHudProgress(hudFocusCommander.agi / 6),
+      rule: `Reach ${AGI_WIN_TARGET} AGI to win immediately.`,
+      value: `${hudFocusCommander.agi}/${AGI_WIN_TARGET}`,
+      progress: clampHudProgress(hudFocusCommander.agi / AGI_WIN_TARGET),
       fillClass: 'hud-victory-fill-agi',
       winType: 'Instant',
       isFinalScoring: false,
@@ -510,7 +520,7 @@ export function Game({ onBackHome }: GameProps) {
       key: 'esc',
       glyph: HUD_GLYPHS.escalation,
       label: 'Escalation edge',
-      rule: 'Push escalation to your end of the track.',
+      rule: escalationRule,
       value: `${hudFocusCommander.escalation}/6`,
       progress: clampHudProgress(hudFocusCommander.escalation / 6),
       fillClass: 'hud-victory-fill-esc',
@@ -521,7 +531,7 @@ export function Game({ onBackHome }: GameProps) {
       key: 'sys',
       glyph: HUD_GLYPHS.systems,
       label: 'System set',
-      rule: 'Collect all 4 system types.',
+      rule: 'Collect all 4 distinct system types.',
       value: `${hudFocusCommander.systems}/${ALL_SYSTEM_TYPES.length}`,
       progress: clampHudProgress(hudFocusCommander.systems / ALL_SYSTEM_TYPES.length),
       fillClass: 'hud-victory-fill-sys',
@@ -575,7 +585,7 @@ export function Game({ onBackHome }: GameProps) {
   }, [isBattleView])
 
   return (
-    <div className={`game-shell relative isolate flex flex-col text-ink ${isBattleView ? 'h-screen overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
+    <div className={`game-shell relative isolate flex flex-col text-ink ${isBattleView ? 'min-h-screen overflow-x-hidden md:h-screen md:overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
       {isBattleView && !isBootstrappingRuntime && (
         <StrategicMapBackground
           age={age}
@@ -616,7 +626,7 @@ export function Game({ onBackHome }: GameProps) {
             {currentTurnLabel && (
               <motion.span
                 key={stageAnimationKey}
-                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                initial={false}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 360, damping: 28 }}
                 className={
@@ -925,14 +935,14 @@ export function Game({ onBackHome }: GameProps) {
           </section>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 px-2 pb-2 pt-2 md:px-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 pt-2 md:overflow-hidden md:px-3">
           {isLoadingGame && (
             <div className="mb-3 w-full rounded-2xl border border-white/70 bg-white/72 px-4 py-3 font-mono text-xs text-ink-faint shadow-[0_12px_22px_rgba(72,93,119,0.08)]">
               Syncing live game state...
             </div>
           )}
 
-          <div className="flex h-full w-full flex-col gap-3 overflow-hidden">
+          <div className="flex min-h-full w-full flex-col gap-3 md:h-full md:overflow-hidden">
             <section className="hud-compact-bar rounded-[20px] px-2.5 py-1.5 md:px-3 md:py-1.5">
               <div className="flex items-center gap-2">
                 <div className="flex shrink-0 items-center gap-2">
@@ -999,6 +1009,14 @@ export function Game({ onBackHome }: GameProps) {
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
+                  {canOpenHeroPicker && (
+                    <button
+                      onClick={toggleHeroPicker}
+                      className={`hud-utility-btn ${canInvokeHero ? '' : 'opacity-80'}`}
+                    >
+                      Heroes
+                    </button>
+                  )}
                   {walletMode === 'burner' ? (
                     <>
                       <span className="hud-inline-chip text-white/80">
@@ -1044,7 +1062,7 @@ export function Game({ onBackHome }: GameProps) {
             </section>
 
             <div className="min-h-0 grid flex-1 gap-3 xl:grid-cols-[288px_minmax(0,1fr)]">
-              <aside className="hidden min-h-0 xl:flex xl:flex-col xl:gap-3">
+              <aside className="hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto xl:pr-1">
                 <div className="hud-panel rounded-[26px] p-3">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <p className="section-label text-white/50">{HUD_GLYPHS.points} How to win</p>
@@ -1111,8 +1129,32 @@ export function Game({ onBackHome }: GameProps) {
                 />
               </aside>
 
-              <section className="table-surface table-surface-battle relative min-h-0 overflow-hidden rounded-[34px] px-4 py-4 md:px-6 md:py-5">
+              <section className="table-surface table-surface-battle relative min-h-0 overflow-visible rounded-[34px] px-3 py-3 md:overflow-hidden md:px-6 md:py-5">
                 <div className="relative z-10 flex h-full min-h-0 flex-col">
+                  {canOpenHeroPicker && (
+                    <button
+                      onClick={toggleHeroPicker}
+                      className={`mb-3 flex items-center justify-between gap-3 rounded-[24px] border px-4 py-3 text-left shadow-[0_18px_32px_rgba(245,158,11,0.16)] transition hover:-translate-y-0.5 ${
+                        canInvokeHero
+                          ? 'border-amber-300/80 bg-[linear-gradient(135deg,rgba(255,244,204,0.96),rgba(255,221,131,0.92))] text-amber-950'
+                          : 'border-amber-200/60 bg-[linear-gradient(135deg,rgba(255,249,231,0.92),rgba(246,234,187,0.88))] text-amber-900'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="section-label text-amber-700/80">Alternative turn action</p>
+                        <p className="mt-1 font-display text-xl font-black leading-none">Invoke Hero instead of drafting</p>
+                        <p className="mt-1 font-mono text-[11px] text-amber-800/80">
+                          {availableHeroes.length} of 3 hero option{availableHeroes.length === 1 ? '' : 's'} remain
+                          {localHeroSurcharge > 0 ? ` • surcharge +${localHeroSurcharge}` : ''}
+                          {canInvokeHero ? '' : ' • inspect the hero market'}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-white/70 bg-white/62 px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
+                        {canInvokeHero ? 'Open heroes' : 'View heroes'}
+                      </span>
+                    </button>
+                  )}
+
                   <PlayField
                     playerIndex={topPlayer}
                     label="Enemy network"
@@ -1122,9 +1164,9 @@ export function Game({ onBackHome }: GameProps) {
                     onInspectCard={inspectCard}
                   />
 
-                  <div className="relative my-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
+                  <div className="relative my-3 flex min-h-0 flex-1 items-center justify-center overflow-x-auto overflow-y-hidden rounded-[30px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-2 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] md:my-4 md:overflow-hidden md:px-4 md:py-5">
                     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_30%,rgba(8,18,34,0.12))]" />
-                    <div className="relative z-10 flex w-full justify-center">
+                    <div className="relative z-10 flex min-w-fit justify-center md:w-full">
                       <CardPyramid
                         key={`${selectedGameId ?? 'none'}-${age}`}
                         dropRefs={dropRefs}
@@ -1194,6 +1236,31 @@ export function Game({ onBackHome }: GameProps) {
           </AnimatePresence>
 
           <HeroPicker />
+
+          <AnimatePresence>
+            {heroReveal && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 18 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98, y: -10 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+                className="pointer-events-none fixed left-1/2 top-24 z-[70] w-[min(92vw,28rem)] -translate-x-1/2 px-4"
+              >
+                <div className="panel-steel overflow-hidden rounded-[30px] border border-amber-200/70 bg-[linear-gradient(180deg,rgba(255,249,231,0.97),rgba(247,236,196,0.94))] px-6 py-5 text-center shadow-[0_24px_44px_rgba(245,158,11,0.18)]">
+                  <p className="section-label text-amber-700/80">Hero deployed</p>
+                  <h3 className="mt-2 font-display text-3xl font-black text-ink">{heroReveal.name}</h3>
+                  <p className="mt-1 font-body text-sm font-semibold italic text-amber-700">{heroReveal.title}</p>
+                  <p className="mt-3 font-mono text-xs text-ink-muted">{heroReveal.description}</p>
+                  <button
+                    onClick={clearHeroReveal}
+                    className="pointer-events-auto mt-4 rounded-full border border-white/80 bg-white/72 px-3 py-1 font-mono text-[11px] font-semibold text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {systemBonusChoice && localPlayerIndex === systemBonusChoice.playerIndex && (
             <SystemBonusChoice

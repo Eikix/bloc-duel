@@ -44,6 +44,33 @@ mod tests {
     }
 
     #[test]
+    fn test_get_card_9_research_cluster_is_economy() {
+        let card = get_card(9);
+        assert(card.id == 9, 'id 9');
+        assert(card.card_type == CardType::Economy, 'type eco');
+        assert(card.compute_cost == 1, 'compute cost');
+        assert(card.agi == 0, 'no agi');
+        assert(card.compute_per_turn == 1, 'compute prod 1');
+    }
+
+    #[test]
+    fn test_non_system_cards_do_not_grant_system_symbols() {
+        let mut id: u8 = 0;
+        loop {
+            if id == card_count() {
+                break;
+            }
+
+            let card = get_card(id);
+            if card.card_type != CardType::System {
+                assert(card.symbol == SystemType::None, 'non-system symbol');
+            }
+
+            id += 1;
+        }
+    }
+
+    #[test]
     fn test_card_ages_by_id_range() {
         let mut id: u8 = 0;
         loop {

@@ -1,6 +1,25 @@
 # BLOC:DUEL
 
-A two-player strategy card game set in a near-future geopolitical conflict. Draft cards from a shared pyramid, build your engine, and race to one of three victory conditions.
+Last synced: 2026-03-08
+
+A two-player strategy card game set in a near-future geopolitical conflict. Draft cards from a shared pyramid, build your engine, invoke heroes, and race across AGI, escalation, systems, or points.
+
+What gives the game replayability:
+- shared-pyramid draft variance changes every match
+- heroes create swing turns and distinct timing windows
+- multiple win lines force different plans and denial patterns
+
+The game is designed to work across:
+- browser play with Cartridge Controller on Starknet Sepolia
+- local burner-account play on Katana
+- programmatic play through the headless SDK and agent skill
+
+That agent-native layer also makes a plausible future direction obvious: routing autonomous play through a Daydream-style agent system, similar in spirit to Axis from Blitz.
+
+Current public deployment:
+- Frontend: [https://bloc-duel.vercel.app](https://bloc-duel.vercel.app)
+- Network: Starknet Sepolia
+- Wallet flow: Cartridge Controller
 
 ## Development
 
@@ -24,11 +43,11 @@ What it does:
 - Starts Vite dev server (port 5173)
 - Uses local Katana burner accounts instead of Cartridge Controller
 
-**When to use:** Day-to-day local development. No mainnet costs, fast iteration.
+**When to use:** Day-to-day local development. No public-network costs, fast iteration.
 
-### Mode 2: Mainnet + Local Torii
+### Mode 2: Public Network + Local Torii
 
-Runs a local Torii instance indexing mainnet contracts. No Katana — reads from real Starknet.
+Runs a local Torii instance indexing deployed contracts on a public Starknet network. No Katana — reads from real Starknet.
 
 ```bash
 nix run .#start-mainnet
@@ -40,11 +59,11 @@ What it does:
 - Installs npm deps if needed
 - Starts Vite dev server (port 5173)
 
-**Prerequisites:** Deploy contracts to mainnet first, set `world_address` and `world_block` in `contracts/dojo_mainnet.toml`.
+**Prerequisites:** Deploy contracts first, set `world_address` and `world_block` in the relevant Dojo config.
 
 **When to use:** Pre-production testing against real on-chain state.
 
-### Mode 3: Mainnet + Remote Torii
+### Mode 3: Public Network + Remote Torii
 
 Frontend only — connects to a remote Torii instance. Nothing local except the dev server.
 
@@ -62,12 +81,12 @@ What it does:
 
 ### Mode Comparison
 
-| | Mode 1 (Local) | Mode 2 (Mainnet-Local) | Mode 3 (Remote Torii) |
+| | Mode 1 (Local) | Mode 2 (Public-Local) | Mode 3 (Remote Torii) |
 |---|---|---|---|
 | **Command** | `nix run .#start` | `nix run .#start-mainnet` | `nix run .#start-mainnet-torii` |
 | **Katana** | Local devnet | -- | -- |
-| **Torii** | Local | Local (indexing mainnet) | Remote |
-| **Blockchain** | Local Katana | Starknet Mainnet | Starknet Mainnet |
+| **Torii** | Local | Local (indexing deployed world) | Remote |
+| **Blockchain** | Local Katana | Starknet public network | Starknet public network |
 | **Best for** | Development | Pre-production | Production |
 
 ### Ports
@@ -156,6 +175,8 @@ The repo also ships a headless agent client for programmatic play. It talks dire
 - self-play locally for validation
 - watch existing matches and continue them
 
+This is not just a test harness. It is a real programmatic interface for agents to play Bloc Duel, which opens the door to agent-vs-agent ladders, automated balance runs, and future router-style integrations.
+
 ### Core API
 
 The public entrypoint is `src/agent/index.ts`.
@@ -176,6 +197,15 @@ Main primitives:
 Strategies currently bundled:
 - `random`
 - `balanced`
+- `race-agi`
+- `race-escalation`
+- `race-systems`
+- `deny-agi`
+- `deny-escalation`
+- `deny-systems`
+- `adaptive-race`
+
+Legacy aliases still supported by the CLI/runtime:
 - `greedy-agi`
 - `greedy-escalation`
 - `systems-first`
@@ -239,7 +269,17 @@ This covers:
 - join through `match act ... join`
 - repeated self-play across multiple strategy pairings
 
-The full self-play loop is currently correct but still slow on local Katana/Torii. Expect repeated validation runs to take a few minutes until that throughput issue is improved.
+The local validator is stable on Katana/Torii. Larger balance batches still depend on local chain/indexer throughput, so big self-play runs can take a few minutes.
+
+## Mobile
+
+The live game is meant to remain playable on mobile and compact laptops, even if the desktop battlefield is the most comfortable way to play.
+
+Recent polish includes:
+- mobile-sized draft and deployed cards
+- action modal usability on touch screens
+- compact-laptop access to the hero action
+- reduced load-time motion so the board settles cleanly
 
 ## Balance Lab
 
@@ -304,16 +344,16 @@ Two rival blocs — **Atlantic** and **Continental** — compete across three ag
 
 | Victory | How |
 |---|---|
-| **AGI Breakthrough** | Push your AGI track to 6 |
-| **Escalation Dominance** | Push the shared escalation track to your side's limit (±6) |
-| **Systems Dominance** | Collect all 4 system types (COMPUTE, FINANCE, CYBER, DIPLOMACY) |
-| **Points** | If no one wins by Age 3, highest score (AGI + systems + heroes) wins |
+| **AGI Breakthrough** | Push your AGI track to 7 |
+| **Escalation Dominance** | Push the shared escalation track to your side's limit (`-6` for Atlantic, `+6` for Continental) |
+| **Systems Dominance** | Collect all 4 system types |
+| **Points** | If no one wins by Age 3, highest score (AGI + distinct systems x2 + heroes) wins |
 
 ### Card Types
 
 - **AI** (blue) — Advance the AGI track
 - **MILITARY** (red) — Push the escalation track
-- **ECONOMY** (amber) — Generate resources per turn
+- **ECONOMY** (amber) — Generate resources or capital
 - **SYSTEM** (green) — Collect system symbols for bonuses and the instant win
 
 ### Systems & Bonuses
@@ -339,12 +379,27 @@ Cards can chain across ages. If you played the prerequisite card, the next link 
 
 ### Heroes
 
-Powerful one-time recruits available each age. Each hero costs resources plus a surcharge (+2 per hero you already own). Heroes provide large effects but replace your card draft for the turn.
+Powerful one-time recruits available each age. Each hero costs resources plus a surcharge (+3 per hero you already own). Heroes provide large effects but replace your card draft for the turn.
+
+## If We Had More Time
+
+The main design area we would revisit is systems. Right now doctrines work, but they are not yet as fun or as impactful as they should be.
+
+What we would likely try next:
+- unlock doctrines at either 2 different systems or 2 copies of the same system
+- make doctrines feel like real game-defining moments, not minor stat bumps
+- push doctrine effects toward sharper identity and interaction
+
+Doctrine ideas worth testing:
+- **Diplomacy**: reset escalation to `0` for both sides
+- **Finance**: discarding cards gives `2x` capital
+- **Compute**: AGI cards cost `1` less
+- **Finance / hero economy**: remove excess payment friction when buying heroes
 
 ## Stack
 
-React 19, TypeScript, Tailwind CSS v4, Zustand, Framer Motion — zero backend, runs entirely in the browser.
+React 19, TypeScript, Tailwind CSS v4, Zustand, Framer Motion, Dojo, Torii, and Cartridge Controller.
 
 ## Status
 
-Work in progress. Active development on game balance and system bonus mechanics.
+Live on Starknet Sepolia. Active development is now focused on balance, UX clarity, and release hardening.

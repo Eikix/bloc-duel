@@ -12,6 +12,7 @@ import {
 } from 'postprocessing'
 import FastNoiseLite from 'fastnoise-lite'
 import * as THREE from 'three'
+import { AGI_WIN_TARGET } from '../game/rules'
 import { Water } from 'three-stdlib'
 import CustomShaderMaterial from 'three-custom-shader-material'
 import type { CardType } from '../game/cards'
@@ -666,7 +667,7 @@ function deriveHeroFocus(teams: [StrategicMapTeam, StrategicMapTeam]): number {
 
 function getDistrictProgress(team: StrategicMapTeam, pointsLeader: number): ProgressSet {
   return {
-    agi: clamp(team.agi / 6, 0, 1),
+    agi: clamp(team.agi / AGI_WIN_TARGET, 0, 1),
     esc: clamp(team.escalation / 6, 0, 1),
     sys: clamp(team.systems / 4, 0, 1),
     pts: clamp(team.projectedPoints / Math.max(pointsLeader, 1), 0, 1),

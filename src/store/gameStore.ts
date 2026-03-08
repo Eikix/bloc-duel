@@ -51,6 +51,7 @@ interface GameState {
   selectedCard: number | null
   availableHeroes: AvailableHero[]
   heroPickerOpen: boolean
+  heroReveal: { name: string; title: string; description: string } | null
   systemBonusChoice: { playerIndex: 0 | 1; options: SystemSymbol[] } | null
   winner: 0 | 1 | 'tie' | null
   winCondition: WinCondition
@@ -63,6 +64,7 @@ interface GameState {
   setLoadingGames: (isLoading: boolean) => void
   setLoadingGame: (isLoading: boolean) => void
   clearError: () => void
+  clearHeroReveal: () => void
 
   createGame: () => Promise<void>
   joinGame: (gameId: number) => Promise<void>
@@ -135,6 +137,21 @@ interface MutationResult {
 }
 
 type SubmittedNotifier = (txHash: string, description?: string) => void
+let heroRevealTimeout: ReturnType<typeof globalThis.setTimeout> | null = null
+
+function showHeroReveal(
+  set: (partial: Partial<GameState>) => void,
+  heroReveal: NonNullable<GameState['heroReveal']>,
+) {
+  if (heroRevealTimeout) {
+    globalThis.clearTimeout(heroRevealTimeout)
+  }
+
+  set({ heroReveal })
+  heroRevealTimeout = globalThis.setTimeout(() => {
+    useGameStore.getState().clearHeroReveal()
+  }, 2200)
+}
 
 async function runMutationWithToast(
   set: (partial: Partial<GameState>) => void,
@@ -219,6 +236,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedCard: null,
   availableHeroes: [],
   heroPickerOpen: false,
+  heroReveal: null,
   systemBonusChoice: null,
   winner: null,
   winCondition: 'None',
@@ -240,6 +258,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         selectedCard: null,
         availableHeroes: [],
         heroPickerOpen: false,
+        heroReveal: null,
         systemBonusChoice: null,
         localPlayerIndex: null,
         isCurrentUserTurn: false,
@@ -268,6 +287,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         snapshot.phase === 'DRAFTING' && snapshot.localPlayerIndex === snapshot.currentPlayer
           ? get().heroPickerOpen
           : false,
+      heroReveal: get().heroReveal,
       systemBonusChoice: snapshot.systemBonusChoice,
       localPlayerIndex: snapshot.localPlayerIndex,
       isCurrentUserTurn: snapshot.localPlayerIndex !== null && snapshot.localPlayerIndex === snapshot.currentPlayer,
@@ -289,6 +309,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       selectedGameId: gameId,
       selectedCard: null,
       heroPickerOpen: false,
+      heroReveal: null,
       error: null,
     })
   },
@@ -303,6 +324,14 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   clearError: () => {
     set({ error: null })
+  },
+
+  clearHeroReveal: () => {
+    if (heroRevealTimeout) {
+      globalThis.clearTimeout(heroRevealTimeout)
+      heroRevealTimeout = null
+    }
+    set({ heroReveal: null })
   },
 
   createGame: async () => {
@@ -453,6 +482,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const runtime = requireRuntime(state)
       const gameId = requireSelectedGameId(state)
       if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
+      const hero = state.availableHeroes.find((candidate) => candidate.slot === heroSlot)
 
       let result: Awaited<ReturnType<typeof runtime.world.actions.invokeHero>>
       const prepared = await prepareTransactionWait(runtime.network, runtime.account)
@@ -470,6 +500,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       notifySubmitted(result.transaction_hash)
       await waitForAcceptedTransaction(runtime.network, runtime.rpcProvider, result.transaction_hash, prepared)
       set({ heroPickerOpen: false, selectedCard: null })
+      if (hero) {
+        showHeroReveal(set, {
+          name: hero.name,
+          title: hero.title,
+          description: hero.description,
+        })
+      }
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
       return { txHash: result.transaction_hash }

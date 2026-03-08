@@ -115,7 +115,7 @@ export const AGE_1_CARDS: Card[] = [
   {
     id: 9,
     name: 'Research Cluster',
-    type: 'AI',
+    type: 'ECONOMY',
     age: 1,
     cost: { compute: 1 },
     effect: { computePerTurn: 1 },
@@ -208,7 +208,6 @@ export const AGE_2_CARDS: Card[] = [
     age: 2,
     cost: { materials: 2 },
     effect: { capital: 2, escalation: 1 },
-    symbol: 'FINANCE',
   },
   {
     id: 19,

@@ -18,7 +18,7 @@ export default function EscalationTrack() {
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">Shared escalation track</p>
-          <p className="font-mono text-[10px] text-ink-faint">Reach your end of the track for an instant pressure victory.</p>
+          <p className="font-mono text-[10px] text-ink-faint">Atlantic wins at -6 on the left. Continental wins at +6 on the right.</p>
         </div>
         <span className="font-display text-xl font-black text-ink">
           {escalation > 0 ? `+${escalation}` : escalation}

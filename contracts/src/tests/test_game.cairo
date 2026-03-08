@@ -258,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn test_systems_do_not_win_before_age_three() {
+    fn test_systems_win_immediately_before_age_three() {
         let (mut world, dispatcher, game_id, player1, _) = setup_game();
 
         let mut game: Game = world.read_model(game_id);
@@ -282,11 +282,9 @@ mod tests {
         dispatcher.play_card(game_id, 6);
 
         let game_after: Game = world.read_model(game_id);
-        let p0_after: PlayerState = world.read_model((game_id, 0_u8));
-        assert(game_after.phase == GamePhase::Drafting, 'still drafting');
-        assert(game_after.winner == 0, 'no winner');
-        assert(game_after.win_condition == WinCondition::None, 'no systems win');
-        assert(p0_after.diplomacy_count == 1, 'fourth system kept');
+        assert(game_after.phase == GamePhase::GameOver, 'game over');
+        assert(game_after.winner == 1, 'p1 wins');
+        assert(game_after.win_condition == WinCondition::SystemsDominance, 'sys win');
     }
 
     #[test]
