@@ -60,7 +60,7 @@
           availability.restart = "no";
         };
 
-        katana = lib.mkIf common.isLinux {
+        katana = lib.mkIf common.supportsLocalContracts {
           command = "${pkgs.writeShellScript "katana-start" ''
             set -e
             PROJECT_DIR="$PWD"
@@ -74,7 +74,7 @@
           readiness_probe = healthChecks.mkKatanaHealthCheck {};
         };
 
-        sozo-migrate = lib.mkIf common.isLinux {
+        sozo-migrate = lib.mkIf common.supportsLocalContracts {
           command = "${pkgs.writeShellScript "sozo-migrate" ''
             set -e
             export PATH="${common.cairoPkgs.scarb}/bin:$PATH"
@@ -85,11 +85,11 @@
             cd "$PROJECT_DIR/contracts"
 
             echo "🔨 Building Dojo contracts..."
-            ${pkgs.util-linux}/bin/script -q -e -c "${common.cairoPkgs.sozo}/bin/sozo build" /dev/null
+            ${common.cairoPkgs.sozo}/bin/sozo build
 
             echo ""
             echo "🚀 Migrating Dojo contracts to Katana..."
-            ${pkgs.util-linux}/bin/script -q -e -c "${common.cairoPkgs.sozo}/bin/sozo migrate" /dev/null
+            ${common.cairoPkgs.sozo}/bin/sozo migrate
 
             WORLD_ADDRESS=$(${pkgs.jq}/bin/jq -r '.world.address' manifest_dev.json)
             if [ -z "$WORLD_ADDRESS" ] || [ "$WORLD_ADDRESS" = "null" ]; then
@@ -106,7 +106,7 @@
           availability.restart = "no";
         };
 
-        torii = lib.mkIf common.isLinux {
+        torii = lib.mkIf common.supportsLocalContracts {
           command = "${pkgs.writeShellScript "torii-start" ''
             set -e
             PROJECT_DIR="$PWD"
@@ -134,6 +134,7 @@
 
             ${common.cairoPkgs.torii}/bin/torii \
               --world "$WORLD_ADDRESS" \
+              --rpc http://127.0.0.1:5050 \
               --db-dir "$DB_DIR" \
               --http.port ${toString common.ports.toriiPort} \
               --http.cors_origins "*" \
@@ -185,7 +186,7 @@
           ''}";
           depends_on = {
             "npm-install".condition = "process_completed_successfully";
-          } // lib.optionalAttrs common.isLinux {
+          } // lib.optionalAttrs common.supportsLocalContracts {
             "torii".condition = "process_healthy";
           };
           environment = {

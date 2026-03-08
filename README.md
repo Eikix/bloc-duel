@@ -6,6 +6,8 @@ A two-player strategy card game set in a near-future geopolitical conflict. Draf
 
 Requires [Nix](https://nixos.org/) with flakes enabled. The dev environment provides all tools (Node.js, Katana, Torii, Sozo, Scarb).
 
+The same Nix entrypoints work on Linux and macOS through native `cairo-nix` packages.
+
 ### Mode 1: Local Dev (Katana + Torii + Vite)
 
 Full local stack — spins up a local Starknet devnet, deploys contracts, starts the indexer, and runs the frontend.
@@ -75,8 +77,17 @@ What it does:
 | Vite dev server | 5173 |
 | Katana (local Starknet) | 5050 |
 | Torii (indexer) | 8080 |
+| Torii gRPC | 18093 |
 
 Override with env vars: `BLOCDUEL_VITE_PORT`, `BLOCDUEL_TORII_PORT`, etc.
+
+Disable local HTTPS when you need plain HTTP:
+
+```bash
+BLOCDUEL_DISABLE_MKCERT=1 nix run .#start
+```
+
+By default the Nix entrypoints keep `mkcert` enabled so localhost stays a trusted secure context.
 
 ### Without Nix
 
