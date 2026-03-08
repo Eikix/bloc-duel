@@ -336,6 +336,7 @@ export function Game({ onBackHome }: GameProps) {
     selectedCard,
     pyramid,
     availableHeroes,
+    heroReveal,
     systemBonusChoice,
     isLoadingGames,
     isLoadingGame,
@@ -354,6 +355,7 @@ export function Game({ onBackHome }: GameProps) {
     nextAge,
     setSelectedGameId,
     clearError,
+    clearHeroReveal,
   } = useGameStore()
 
   const bottomPlayer = localPlayerIndex ?? currentPlayer
@@ -1198,6 +1200,31 @@ export function Game({ onBackHome }: GameProps) {
           </AnimatePresence>
 
           <HeroPicker />
+
+          <AnimatePresence>
+            {heroReveal && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 18 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98, y: -10 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+                className="pointer-events-none fixed left-1/2 top-24 z-[70] w-[min(92vw,28rem)] -translate-x-1/2 px-4"
+              >
+                <div className="panel-steel overflow-hidden rounded-[30px] border border-amber-200/70 bg-[linear-gradient(180deg,rgba(255,249,231,0.97),rgba(247,236,196,0.94))] px-6 py-5 text-center shadow-[0_24px_44px_rgba(245,158,11,0.18)]">
+                  <p className="section-label text-amber-700/80">Hero deployed</p>
+                  <h3 className="mt-2 font-display text-3xl font-black text-ink">{heroReveal.name}</h3>
+                  <p className="mt-1 font-body text-sm font-semibold italic text-amber-700">{heroReveal.title}</p>
+                  <p className="mt-3 font-mono text-xs text-ink-muted">{heroReveal.description}</p>
+                  <button
+                    onClick={clearHeroReveal}
+                    className="pointer-events-auto mt-4 rounded-full border border-white/80 bg-white/72 px-3 py-1 font-mono text-[11px] font-semibold text-ink-muted shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {systemBonusChoice && localPlayerIndex === systemBonusChoice.playerIndex && (
             <SystemBonusChoice
