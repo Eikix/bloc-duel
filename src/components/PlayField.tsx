@@ -30,16 +30,16 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
     return (
       <div
         ref={ref}
-        className={`panel-glass rounded-[26px] px-3 py-3 md:px-4 ${
+        className={`panel-glass rounded-[28px] px-4 py-4 md:px-5 ${
           isHighlighted
             ? 'border-blue-300/80 bg-[linear-gradient(135deg,rgba(219,234,254,0.9),rgba(239,246,255,0.96))] shadow-[0_20px_35px_rgba(59,130,246,0.18)]'
             : ''
-        } ${compact ? 'rounded-[22px] px-3 py-2.5 md:px-3.5 md:py-3' : ''}`}
+        } ${compact ? 'rounded-[24px] px-3.5 py-3 md:px-4 md:py-3.5' : ''}`}
       >
         <div className={`flex items-center justify-between gap-3 ${compact ? 'mb-2' : 'mb-3'}`}>
           <div>
             <p className="section-label mb-1">Deployment lane</p>
-            <p className={`font-display font-black text-ink ${compact ? 'text-sm md:text-base' : 'text-base'}`}>
+            <p className={`font-display font-black text-ink ${compact ? 'text-base' : 'text-lg'}`}>
               {label ?? `${playerName} network`}
             </p>
           </div>
@@ -59,13 +59,13 @@ const PlayField = forwardRef<HTMLDivElement, PlayFieldProps>(
           </div>
         </div>
 
-        <div className={`scrollbar-hidden flex items-start gap-2 overflow-x-auto rounded-[20px] px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] ${
+        <div className={`scrollbar-hidden flex items-start gap-2.5 overflow-x-auto rounded-[22px] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] ${
           targetLabel
             ? 'border-2 border-dashed border-blue-200/90 bg-blue-50/50'
             : 'border border-white/80 bg-white/58'
-        } ${compact ? 'min-h-[58px] py-2.5' : 'min-h-[70px] py-3'}`}>
+        } ${compact ? 'min-h-[72px] py-3' : 'min-h-[88px] py-4'}`}>
           {cards.length === 0 ? (
-            <span className={`font-mono text-[11px] italic text-ink-faint ${compact ? 'py-2' : 'py-3'}`}>
+            <span className={`font-mono text-[11px] italic text-ink-faint ${compact ? 'py-2.5' : 'py-3.5'}`}>
               {emptyHint ?? 'Drag a drafted card here to deploy it to the board.'}
             </span>
           ) : (

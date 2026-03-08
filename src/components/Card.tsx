@@ -149,8 +149,8 @@ export default function Card({
         pressStartRef.current = { x: event.clientX, y: event.clientY }
       }}
       className={`
-        relative h-28 w-[4.9rem] overflow-hidden rounded-[18px] border ${style.frame} ${style.tint}
-        flex flex-col select-none transition-shadow duration-150 sm:h-[7rem] sm:w-[5.15rem] md:h-[7.35rem] md:w-[5.3rem] lg:h-[7.75rem] lg:w-[5.55rem] xl:h-[8.1rem] xl:w-[5.8rem]
+        relative h-[7.1rem] w-[5.05rem] overflow-hidden rounded-[18px] border ${style.frame} ${style.tint}
+        flex flex-col select-none transition-shadow duration-150 sm:h-[7.25rem] sm:w-[5.2rem] md:h-[7.6rem] md:w-[5.45rem] lg:h-[8rem] lg:w-[5.8rem] xl:h-[8.45rem] xl:w-[6.05rem] 2xl:h-[9rem] 2xl:w-[6.4rem]
         ${selected ? 'ring-2 ring-atlantic/60 ring-offset-2 ring-offset-white/70' : ''}
         ${available ? 'cursor-grab shadow-[0_16px_24px_rgba(77,95,121,0.18)]' : 'pointer-events-none opacity-30 grayscale shadow-none'}
         ${isDragging ? 'z-[100] cursor-grabbing shadow-[0_26px_36px_rgba(42,59,83,0.24)]' : ''}
@@ -188,7 +188,7 @@ export default function Card({
       </div>
 
       <div className="relative flex-1 px-2 md:px-2.5">
-        <p className={`font-display text-[11px] font-black leading-[1.02] ${style.text} sm:text-[12px] md:text-[13px] lg:text-[14px] xl:text-[15px]`}>
+        <p className={`font-display text-[11px] font-black leading-[1.02] ${style.text} sm:text-[12px] md:text-[13px] lg:text-[14px] xl:text-[15px] 2xl:text-[16px]`}>
           {card.name}
         </p>
 
@@ -204,7 +204,7 @@ export default function Card({
 
       <div className="relative mt-auto px-2 pb-2 md:px-2.5 md:pb-2.5">
         <div className="rounded-xl border border-white/70 bg-white/66 px-1.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]">
-          <p className="line-clamp-2 font-mono text-[7px] leading-tight text-ink-muted sm:text-[7.5px] md:text-[8px] lg:text-[8.5px] xl:text-[9px]">
+          <p className="line-clamp-2 font-mono text-[7px] leading-tight text-ink-muted sm:text-[7.5px] md:text-[8px] lg:text-[8.5px] xl:text-[9px] 2xl:text-[9.5px]">
             {effects.join(' / ')}
           </p>
         </div>

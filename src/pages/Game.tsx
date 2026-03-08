@@ -1,16 +1,14 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useRef, useState } from 'react'
-import AGITrack from '../components/AGITrack'
-import ActionDock from '../components/ActionDock'
+import { useEffect, useRef, useState } from 'react'
 import CardPyramid from '../components/CardPyramid'
 import CardZoom from '../components/CardZoom'
 import DiscardZone from '../components/DiscardZone'
-import EscalationTrack from '../components/EscalationTrack'
 import HeroPicker from '../components/HeroPicker'
 import PlayField from '../components/PlayField'
-import PlayerStatsBar from '../components/PlayerStatsBar'
 import SystemBonusChoice from '../components/SystemBonusChoice'
 import { useBlocDuelLifecycle } from '../hooks/useBlocDuel'
+import { RESOURCE_ICONS } from '../game/format'
+import { ALL_SYSTEM_TYPES } from '../game/systems'
 import {
   isZeroAddress,
   normalizeAddress,
@@ -37,6 +35,43 @@ const WIN_CONDITION_LABELS: Record<WinCondition, string> = {
   SystemsDominance: 'Systems Dominance',
   Points: 'Points Victory',
 }
+
+const TURN_FLOW = [
+  'Draft any revealed card in the center pyramid.',
+  'Deploy it to your lane or sell it for capital.',
+  'Clear the pyramid to trigger the next age.',
+] as const
+
+const WIN_PATHS = [
+  'AGI to 6',
+  'Escalation to your edge',
+  'All 4 system types',
+  'Most points after Age III',
+] as const
+
+const COLOR_GUIDE = [
+  { label: 'AI', detail: 'Pushes AGI', chip: 'bg-blue-500 text-white' },
+  { label: 'MIL', detail: 'Pushes escalation', chip: 'bg-red-500 text-white' },
+  { label: 'ECO', detail: 'Builds production', chip: 'bg-amber-500 text-white' },
+  { label: 'SYS', detail: 'Builds symbol sets', chip: 'bg-emerald-500 text-white' },
+] as const
+
+const HUD_GLYPHS = {
+  atlantic: '▲',
+  continental: '◆',
+  capital: '◈',
+  agi: '◎',
+  systems: '⬢',
+  escalation: '✦',
+  points: '★',
+  mission: '▶',
+  guide: '⌘',
+  board: '⌬',
+  live: '◉',
+  selection: '◌',
+} as const
+
+type GamePlayer = ReturnType<typeof useGameStore.getState>['players'][number]
 
 function getWinnerLabel(
   winner: 0 | 1 | 'tie' | null,
@@ -66,12 +101,203 @@ function getBurnerIndexForAddress(address: string, burnerAddresses: string[]): n
   return burnerAddresses.findIndex((burnerAddress) => normalizeAddress(burnerAddress) === normalizedAddress)
 }
 
+function countDistinctSystems(player: Pick<GamePlayer, 'systems'>): number {
+  return new Set(player.systems).size
+}
+
+function getPointsProjection(player: GamePlayer, agiValue: number): number {
+  return agiValue + countDistinctSystems(player) + player.heroCount
+}
+
+function getEscalationPressure(playerIndex: 0 | 1, escalation: number): number {
+  return playerIndex === 0 ? Math.max(0, -escalation) : Math.max(0, escalation)
+}
+
+function CommanderHudCard({
+  player,
+  agi,
+  escalation,
+  systems,
+  projectedPoints,
+  isActive,
+  isLocal,
+  onHeroClick,
+  canInvokeHero,
+  heroSurcharge,
+}: {
+  player: GamePlayer
+  agi: number
+  escalation: number
+  systems: number
+  projectedPoints: number
+  isActive: boolean
+  isLocal: boolean
+  onHeroClick?: () => void
+  canInvokeHero?: boolean
+  heroSurcharge?: number
+}) {
+  const isAtlantic = player.faction === 'ATLANTIC'
+  const accentText = isAtlantic ? 'text-atlantic' : 'text-continental'
+  const cardTone = isAtlantic ? 'hud-panel-atlantic' : 'hud-panel-continental'
+  const accentDot = isAtlantic ? 'bg-atlantic' : 'bg-continental'
+  const factionGlyph = isAtlantic ? HUD_GLYPHS.atlantic : HUD_GLYPHS.continental
+
+  return (
+    <div className={`hud-command-plate ${cardTone}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="hud-icon-badge text-white/80">{factionGlyph}</span>
+            <span className={`h-2.5 w-2.5 rounded-full ${accentDot}`} />
+            <p className="section-label text-white/50">{isLocal ? 'Your bloc' : 'Enemy bloc'}</p>
+          </div>
+          <h3 className={`mt-1.5 truncate font-display text-[1.15rem] font-black ${accentText}`}>{player.name}</h3>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <span className={`hud-status-pill ${isActive ? 'hud-status-pill-live' : ''}`}>
+            {isActive ? 'Active' : 'Standby'}
+          </span>
+          {isLocal && onHeroClick && (
+            <button
+              onClick={onHeroClick}
+              disabled={!canInvokeHero}
+              className={`rounded-xl px-3 py-2 font-mono text-[11px] font-semibold transition ${
+                canInvokeHero
+                  ? 'border border-amber-300 bg-[linear-gradient(135deg,#fff1bf,#ffd46a)] text-amber-900 shadow-[0_12px_20px_rgba(245,158,11,0.2)] hover:-translate-y-0.5'
+                  : 'border border-white/18 bg-white/8 text-white/40'
+              }`}
+            >
+              Hero +{heroSurcharge ?? 0}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="hud-resource-cell hud-resource-cell-compact">
+          <span className="hud-resource-label">{HUD_GLYPHS.capital} Cap</span>
+          <span className="hud-resource-value">{player.capital}</span>
+        </div>
+        <div className="hud-resource-cell hud-resource-cell-compact">
+          <span className="hud-resource-label">{HUD_GLYPHS.agi} AGI</span>
+          <span className="hud-resource-value">{agi}/6</span>
+        </div>
+        <div className="hud-resource-cell hud-resource-cell-compact">
+          <span className="hud-resource-label">{HUD_GLYPHS.systems} Sys</span>
+          <span className="hud-resource-value">{systems}/{ALL_SYSTEM_TYPES.length}</span>
+        </div>
+        <div className="hud-resource-cell hud-resource-cell-compact">
+          <span className="hud-resource-label">{HUD_GLYPHS.escalation} Esc</span>
+          <span className="hud-resource-value">{escalation}/6</span>
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2 font-mono text-[11px] text-white/72">
+        <span className="hud-inline-chip">{RESOURCE_ICONS.energy} {player.production.energy}</span>
+        <span className="hud-inline-chip">{RESOURCE_ICONS.materials} {player.production.materials}</span>
+        <span className="hud-inline-chip">{RESOURCE_ICONS.compute} {player.production.compute}</span>
+        <span className="hud-inline-chip">{HUD_GLYPHS.points} {projectedPoints}</span>
+      </div>
+    </div>
+  )
+}
+
+function clampHudProgress(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function GuideSidebar({
+  open,
+  onClose,
+  missionQuestion,
+  missionAnswer,
+}: {
+  open: boolean
+  onClose: () => void
+  missionQuestion: string
+  missionAnswer: string
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.aside
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 24 }}
+          transition={{ duration: 0.2 }}
+          className="hud-guide fixed bottom-3 right-3 top-24 z-40 w-[min(320px,calc(100vw-1.5rem))] overflow-y-auto rounded-[30px] p-5 md:top-[6.5rem]"
+        >
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p className="section-label text-white/60">{HUD_GLYPHS.guide} Guide</p>
+              <h3 className="mt-2 font-display text-2xl font-black text-white">How it works</h3>
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 font-mono text-[11px] font-semibold text-white/72 transition hover:bg-white/12 hover:text-white"
+            >
+              Hide
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <section className="hud-guide-card">
+              <p className="section-label mb-2 text-white/50">{HUD_GLYPHS.mission} Current prompt</p>
+              <h4 className="font-display text-xl font-black text-white">{missionQuestion}</h4>
+              <p className="mt-2 text-sm leading-relaxed text-white/72">{missionAnswer}</p>
+            </section>
+
+            <section className="hud-guide-card">
+              <p className="section-label mb-2 text-white/50">{HUD_GLYPHS.live} Turn flow</p>
+              <div className="space-y-2">
+                {TURN_FLOW.map((step, index) => (
+                  <div key={step} className="flex items-start gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-atlantic font-mono text-[11px] font-bold text-white">
+                      {index + 1}
+                    </span>
+                    <p className="text-sm text-white/72">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="hud-guide-card">
+              <p className="section-label mb-2 text-white/50">{HUD_GLYPHS.points} Win paths</p>
+              <div className="flex flex-wrap gap-2">
+                {WIN_PATHS.map((path) => (
+                  <span key={path} className="hud-inline-chip text-white/80">
+                    {path}
+                  </span>
+                ))}
+              </div>
+            </section>
+
+            <section className="hud-guide-card">
+              <p className="section-label mb-2 text-white/50">{HUD_GLYPHS.selection} Color read</p>
+              <div className="space-y-2">
+                {COLOR_GUIDE.map((entry) => (
+                  <div key={entry.label} className="flex items-center justify-between gap-3">
+                    <span className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold ${entry.chip}`}>{entry.label}</span>
+                    <span className="text-sm text-white/68">{entry.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
+  )
+}
+
 interface GameProps {
   onBackHome?: () => void
 }
 
 export function Game({ onBackHome }: GameProps) {
   const [joinGameId, setJoinGameId] = useState('')
+  const [isGuideOpen, setIsGuideOpen] = useState(true)
   const {
     address,
     burnerAddresses,
@@ -101,8 +327,11 @@ export function Game({ onBackHome }: GameProps) {
     currentPlayer,
     phase,
     age,
+    agiTrack,
+    escalationTrack,
     selectedCard,
     pyramid,
+    availableHeroes,
     systemBonusChoice,
     isLoadingGames,
     isLoadingGame,
@@ -116,11 +345,13 @@ export function Game({ onBackHome }: GameProps) {
     discardCard,
     playCardAt,
     discardCardAt,
+    toggleHeroPicker,
     chooseSystemBonus,
     nextAge,
     setSelectedGameId,
     clearError,
   } = useGameStore()
+
   const bottomPlayer = localPlayerIndex ?? currentPlayer
   const topPlayer: 0 | 1 = bottomPlayer === 0 ? 1 : 0
 
@@ -151,19 +382,99 @@ export function Game({ onBackHome }: GameProps) {
   const currentTurnLabel = selectedGameId === null
     ? null
     : isZeroAddress(currentPlayerAddress)
-      ? 'Turn: waiting for opponent'
+      ? 'Waiting for opponent'
       : walletMode === 'burner'
-        ? `Turn: ${currentTurnBurnerIndex >= 0 ? `Burner ${currentTurnBurnerIndex + 1}` : shortAddress(currentPlayerAddress)} (${shortAddress(currentPlayerAddress)})`
-        : `Turn: ${current.name} (${shortAddress(currentPlayerAddress)})`
-  const phaseObjective =
-    phase === 'DRAFTING'
-      ? 'Inspect a revealed dossier, then deploy it to your command row or liquidate it for capital.'
-      : phase === 'AGE_TRANSITION'
-        ? 'The current age is cleared. Advance the theater when the active commander is ready.'
-        : phase === 'GAME_OVER'
-          ? 'The duel is settled. Review the winner and start a fresh command exercise when ready.'
-          : 'Open the lobby, invite a rival bloc, and begin the draft.'
+        ? `${currentTurnBurnerIndex >= 0 ? `Burner ${currentTurnBurnerIndex + 1}` : shortAddress(currentPlayerAddress)}`
+        : current.name
   const stageAnimationKey = `${selectedGameId ?? 'lobby'}-${age}-${phase}-${currentPlayer}`
+  const nextAgeValue = Math.min(age + 1, 3) as 1 | 2 | 3
+
+  const missionQuestion =
+    phase === 'DRAFTING'
+      ? isCurrentUserTurn
+        ? selectedNode ? `Should I deploy ${selectedNode.card.name}?` : 'What do I do on this turn?'
+        : 'Why am I waiting?'
+      : phase === 'AGE_TRANSITION'
+        ? 'What happens next?'
+        : phase === 'GAME_OVER'
+          ? 'What now?'
+          : 'How does the match start?'
+
+  const missionAnswer =
+    phase === 'DRAFTING'
+      ? isCurrentUserTurn
+        ? selectedNode
+          ? canAffordCard
+            ? 'Deploy it if it advances AGI, escalation, or your system set. Sell it if capital matters more this round.'
+            : `You cannot afford the deployment cleanly right now, but selling still gives +${sellValue} capital.`
+          : 'Take any revealed card in the center pyramid. Then deploy it to your lane or sell it for capital.'
+        : 'Only the active commander can act. Watch what opens in the pyramid and plan the next tempo swing.'
+      : phase === 'AGE_TRANSITION'
+        ? isCurrentUserTurn
+          ? `Start Age ${AGE_LABELS[nextAgeValue]} when you are ready for the next pyramid.`
+          : 'The board is between ages. Wait for the active commander to continue.'
+        : phase === 'GAME_OVER'
+          ? 'Return to the lobby or launch a fresh match.'
+          : 'Create or join a game. The draft begins as soon as both commanders are seated.'
+
+  const localPlayer = localPlayerIndex !== null ? players[localPlayerIndex] : null
+  const localHeroSurcharge = localPlayer?.heroCount ? localPlayer.heroCount * 2 : 0
+  const canInvokeHero = localPlayer !== null
+    && isCurrentUserTurn
+    && phase === 'DRAFTING'
+    && availableHeroes.length > 0
+    && availableHeroes.some((hero) => canAfford(localPlayer, hero.cost, localHeroSurcharge))
+  const hudFocusPlayer = localPlayer ?? players[bottomPlayer]
+  const hudFocusPlayerIndex: 0 | 1 = localPlayerIndex ?? bottomPlayer
+
+  const commanderCards = ([0, 1] as const).map((playerIndex) => ({
+    playerIndex,
+    player: players[playerIndex],
+    agi: agiTrack[playerIndex],
+    systems: countDistinctSystems(players[playerIndex]),
+    escalation: getEscalationPressure(playerIndex, escalationTrack),
+    projectedPoints: getPointsProjection(players[playerIndex], agiTrack[playerIndex]),
+    isLocal: localPlayerIndex === playerIndex,
+    isActive: currentPlayer === playerIndex,
+  }))
+  const atlanticHud = commanderCards[0]
+  const continentalHud = commanderCards[1]
+  const hudFocusCommander = commanderCards[hudFocusPlayerIndex]
+  const pointsLeader = Math.max(...commanderCards.map((card) => card.projectedPoints), 1)
+  const victoryTracks = [
+    {
+      key: 'agi',
+      glyph: HUD_GLYPHS.agi,
+      label: 'AGI',
+      value: `${hudFocusCommander.agi}/6`,
+      progress: clampHudProgress(hudFocusCommander.agi / 6),
+      fillClass: 'hud-victory-fill-agi',
+    },
+    {
+      key: 'esc',
+      glyph: HUD_GLYPHS.escalation,
+      label: 'ESC',
+      value: `${hudFocusCommander.escalation}/6`,
+      progress: clampHudProgress(hudFocusCommander.escalation / 6),
+      fillClass: 'hud-victory-fill-esc',
+    },
+    {
+      key: 'sys',
+      glyph: HUD_GLYPHS.systems,
+      label: 'SYS',
+      value: `${hudFocusCommander.systems}/${ALL_SYSTEM_TYPES.length}`,
+      progress: clampHudProgress(hudFocusCommander.systems / ALL_SYSTEM_TYPES.length),
+      fillClass: 'hud-victory-fill-sys',
+    },
+    {
+      key: 'pts',
+      glyph: HUD_GLYPHS.points,
+      label: 'PTS',
+      value: `${hudFocusCommander.projectedPoints}`,
+      progress: clampHudProgress(hudFocusCommander.projectedPoints / pointsLeader),
+      fillClass: 'hud-victory-fill-pts',
+    },
+  ] as const
 
   const handleJoinById = async () => {
     const parsed = Number(joinGameId)
@@ -173,194 +484,239 @@ export function Game({ onBackHome }: GameProps) {
   }
 
   const showLobbyScreen = selectedGameId === null
+  const showLoadingState = isLoadingGame && selectedSummary?.phase !== 'LOBBY' && pyramid.length === 0
+  const showLobbyWaitingState = Boolean(selectedSummary && selectedSummary.phase === 'LOBBY')
   const showWaitingChoice =
     systemBonusChoice !== null && (!isCurrentUserTurn || localPlayerIndex !== systemBonusChoice.playerIndex)
+  const isBattleView = !showLobbyScreen && !showLoadingState && !showLobbyWaitingState
+
+  useEffect(() => {
+    document.body.classList.toggle('game-active', isBattleView)
+    return () => {
+      document.body.classList.remove('game-active')
+    }
+  }, [isBattleView])
 
   return (
-    <div className="game-shell flex min-h-screen flex-col text-ink lg:h-screen lg:overflow-hidden">
-      <header className="game-topbar rounded-[26px] px-4 py-3 md:px-6 md:py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className={`game-shell flex flex-col text-ink ${isBattleView ? 'h-screen overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
+      {!isBattleView && (
+      <header className="game-topbar rounded-[30px] px-4 py-4 md:px-6 md:py-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-3 md:gap-4">
             <div>
               <p className="section-label mb-1">Strategic Command Simulator</p>
-              <h1 className="font-display text-xl font-black tracking-[0.02em] text-ink md:text-2xl">
+              <h1 className="font-display text-2xl font-black tracking-[0.02em] text-ink md:text-[2rem]">
                 BLOC<span className="text-continental">:</span>DUEL
               </h1>
             </div>
-          {selectedGameId !== null && (
-            <span className="command-chip rounded-full px-3 py-1 font-mono text-xs font-bold text-ink-muted">
-              Game #{selectedGameId}
-            </span>
-          )}
-          {selectedGameId !== null && (
-            <span className="command-chip rounded-full px-3 py-1 font-mono text-xs text-ink-muted">
-              {PHASE_LABELS[phase]}
-            </span>
-          )}
-          {selectedGameId !== null && phase !== 'LOBBY' && (
-            <span className="command-chip rounded-full px-3 py-1 font-mono text-xs font-bold text-ink-muted">
-              Age {AGE_LABELS[age]}
-            </span>
-          )}
-          {currentTurnLabel && (
-            <motion.span
-              key={stageAnimationKey}
-              initial={{ opacity: 0, y: 8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-              className={
-                `rounded-full border px-3 py-1 font-mono text-xs ${
-                  currentTurnIsLocalWallet
-                    ? 'border-emerald-300 bg-emerald-50/90 text-emerald-700 shadow-[0_8px_24px_rgba(16,185,129,0.16)]'
-                    : 'border-white/70 bg-white/60 text-ink-muted'
-                }`
-              }
-            >
-              {currentTurnLabel}
-              {currentTurnIsLocalWallet && phase !== 'GAME_OVER' ? ' - your turn' : ''}
-            </motion.span>
-          )}
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {onBackHome && (
-            <button
-              onClick={() => {
-                setSelectedGameId(null)
-                onBackHome()
-              }}
-              className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
-            >
-              Home
-            </button>
-          )}
-          {selectedGameId !== null && (
-            <button
-              onClick={() => setSelectedGameId(null)}
-              className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
-            >
-              Lobby
-            </button>
-          )}
-          <button
-            onClick={() => {
-              clearError()
-              if (!runtimeReady) {
-                reloadRuntime()
-                return
-              }
-              void refreshGames()
-              void refreshGame(selectedGameId)
-            }}
-            className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
-          >
-            Refresh
-          </button>
-          <button
-            onClick={() => void createGame()}
-            disabled={!runtimeReady || !isConnected || isSubmitting}
-            className="rounded-xl border border-transparent bg-[linear-gradient(135deg,#112038,#24446f)] px-3.5 py-1.5 font-mono text-[11px] font-semibold text-white shadow-[0_12px_24px_rgba(17,32,56,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            New Game
-          </button>
-          {walletMode === 'burner' ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] font-medium text-ink-muted">
-                {isConnected
-                  ? `Burner ${(burnerIndex ?? 0) + 1}/${Math.max(1, burnerAddresses.length)} ${shortAddress(address)}`
-                  : 'Preparing burner...'}
+            {selectedGameId !== null && (
+              <span className="command-chip rounded-full px-3 py-1 font-mono text-xs font-bold text-ink-muted">
+                Game #{selectedGameId}
               </span>
-              {burnerAddresses.length > 1 && (
-                <select
-                  value={burnerIndex ?? 0}
-                  onChange={(event) => switchBurner(Number(event.target.value))}
-                  className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] font-medium text-ink-muted outline-none transition hover:text-ink"
-                >
-                  {burnerAddresses.map((burnerAddress, index) => (
-                    <option key={burnerAddress} value={index}>
-                      {`Burner ${index + 1} ${shortAddress(burnerAddress)}`}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-          ) : isConnected ? (
-            <button
-              onClick={() => disconnect()}
-              disabled={isDisconnecting}
-              className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Controller {shortAddress(address)}
-            </button>
-          ) : (
+            )}
+            {selectedGameId !== null && (
+              <span className="command-chip rounded-full px-3 py-1 font-mono text-xs text-ink-muted">
+                {PHASE_LABELS[phase]}
+              </span>
+            )}
+            {selectedGameId !== null && phase !== 'LOBBY' && (
+              <span className="command-chip rounded-full px-3 py-1 font-mono text-xs font-bold text-ink-muted">
+                Age {AGE_LABELS[age]}
+              </span>
+            )}
+            {currentTurnLabel && (
+              <motion.span
+                key={stageAnimationKey}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                className={
+                  `rounded-full border px-3 py-1 font-mono text-xs ${
+                    currentTurnIsLocalWallet
+                      ? 'border-emerald-300 bg-emerald-50/90 text-emerald-700 shadow-[0_8px_24px_rgba(16,185,129,0.16)]'
+                      : 'border-white/70 bg-white/60 text-ink-muted'
+                  }`
+                }
+              >
+                Turn: {currentTurnLabel}
+                {currentTurnIsLocalWallet && phase !== 'GAME_OVER' ? ' - your move' : ''}
+              </motion.span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {onBackHome && (
+              <button
+                onClick={() => {
+                  setSelectedGameId(null)
+                  onBackHome()
+                }}
+                className="command-chip rounded-xl px-3 py-2 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
+              >
+                Home
+              </button>
+            )}
+            {selectedGameId !== null && (
+              <button
+                onClick={() => setSelectedGameId(null)}
+                className="command-chip rounded-xl px-3 py-2 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
+              >
+                Lobby
+              </button>
+            )}
             <button
               onClick={() => {
-                if (controllerConnector) {
-                  void connect({ connector: controllerConnector })
+                clearError()
+                if (!runtimeReady) {
+                  reloadRuntime()
+                  return
                 }
+                void refreshGames()
+                void refreshGame(selectedGameId)
               }}
-              disabled={!controllerConnector || isPending}
-              className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+              className="command-chip rounded-xl px-3 py-2 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
             >
-              Connect Controller
+              Refresh
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => void createGame()}
+              disabled={!runtimeReady || !isConnected || isSubmitting}
+              className="rounded-xl border border-transparent bg-[linear-gradient(135deg,#112038,#24446f)] px-4 py-2 font-mono text-[11px] font-semibold text-white shadow-[0_12px_24px_rgba(17,32,56,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              New Match
+            </button>
+            {walletMode === 'burner' ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="command-chip rounded-xl px-3 py-2 font-mono text-[11px] font-medium text-ink-muted">
+                  {isConnected
+                    ? `Seat ${String((burnerIndex ?? 0) + 1).padStart(2, '0')}/${String(Math.max(1, burnerAddresses.length)).padStart(2, '0')} ${shortAddress(address)}`
+                    : 'Preparing burner seat...'}
+                </span>
+                {burnerAddresses.length > 1 && (
+                  <select
+                    value={burnerIndex ?? 0}
+                    onChange={(event) => switchBurner(Number(event.target.value))}
+                    className="command-chip rounded-xl px-3 py-2 font-mono text-[11px] font-medium text-ink-muted outline-none transition hover:text-ink"
+                  >
+                    {burnerAddresses.map((burnerAddress, index) => (
+                      <option key={burnerAddress} value={index}>
+                        {`Seat ${index + 1} ${shortAddress(burnerAddress)}`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            ) : isConnected ? (
+              <button
+                onClick={() => disconnect()}
+                disabled={isDisconnecting}
+                className="command-chip rounded-xl px-3 py-2 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Controller {shortAddress(address)}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  if (controllerConnector) {
+                    void connect({ connector: controllerConnector })
+                  }
+                }}
+                disabled={!controllerConnector || isPending}
+                className="command-chip rounded-xl px-3 py-2 font-mono text-[11px] font-medium text-ink-muted transition hover:-translate-y-0.5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Connect Controller
+              </button>
+            )}
+          </div>
         </div>
       </header>
+      )}
 
       {error && (
-        <div className="mx-3 rounded-2xl border border-red-200/80 bg-red-50/90 px-4 py-2 font-mono text-xs text-red-700 shadow-[0_10px_30px_rgba(239,68,68,0.1)] md:px-6">
-          {error}
+        <div className="mx-auto w-full max-w-[1760px] px-4 md:px-6">
+          <div className="rounded-2xl border border-red-200/80 bg-red-50/90 px-4 py-3 font-mono text-xs text-red-700 shadow-[0_10px_30px_rgba(239,68,68,0.1)]">
+            {error}
+          </div>
         </div>
       )}
 
       {runtimeError && (
-        <div className="mx-3 rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-2 font-mono text-xs text-amber-700 shadow-[0_10px_30px_rgba(245,158,11,0.12)] md:px-6">
-          {runtimeError}
+        <div className="mx-auto w-full max-w-[1760px] px-4 md:px-6">
+          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 font-mono text-xs text-amber-700 shadow-[0_10px_30px_rgba(245,158,11,0.12)]">
+            {runtimeError}
+          </div>
         </div>
       )}
 
       {isBootstrappingRuntime && (
-        <div className="mx-3 rounded-2xl border border-white/70 bg-white/70 px-4 py-2 font-mono text-xs text-ink-faint shadow-[0_10px_28px_rgba(73,92,120,0.08)] md:px-6">
-          Initializing Dojo and Torii...
+        <div className="mx-auto w-full max-w-[1760px] px-4 md:px-6">
+          <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 font-mono text-xs text-ink-faint shadow-[0_10px_28px_rgba(73,92,120,0.08)]">
+            Initializing Dojo and Torii...
+          </div>
         </div>
       )}
 
       {showLobbyScreen ? (
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 md:px-6">
-          <section className="panel-steel rounded-[28px] p-5 md:p-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="mx-auto flex w-full max-w-[1760px] flex-col gap-6 px-4 py-2 md:px-6">
+          <section className="panel-steel rounded-[34px] p-6 md:p-8">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
               <div>
                 <p className="section-label mb-2">War Room</p>
-                <h2 className="font-display text-3xl font-black text-ink md:text-4xl">Launch a new bloc skirmish</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted md:text-[15px]">
-                  Spin up a live contract-backed duel, claim a controller seat, and share the mission id with your rival commander.
+                <h2 className="font-display text-3xl font-black text-ink md:text-5xl">Launch a new bloc skirmish</h2>
+                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-muted md:text-base">
+                  Create a live match, share the game id, and jump into the three-age draft as soon as both commanders are seated.
                 </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-white/75 bg-white/82 px-3 py-1 font-mono text-[11px] font-semibold text-ink-muted">3 ages</span>
+                  <span className="rounded-full border border-white/75 bg-white/82 px-3 py-1 font-mono text-[11px] font-semibold text-ink-muted">10-card pyramid</span>
+                  <span className="rounded-full border border-white/75 bg-white/82 px-3 py-1 font-mono text-[11px] font-semibold text-ink-muted">4 win paths</span>
+                </div>
+
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <input
+                    value={joinGameId}
+                    onChange={(event) => setJoinGameId(event.target.value)}
+                    placeholder="Enter a game id"
+                    className="rounded-[22px] border border-white/80 bg-white/80 px-4 py-3 font-mono text-sm text-ink outline-none transition focus:border-atlantic focus:ring-2 focus:ring-atlantic/20"
+                  />
+                  <button
+                    onClick={() => void handleJoinById()}
+                    disabled={!runtimeReady || !isConnected || isSubmitting}
+                    className="rounded-[22px] bg-[linear-gradient(135deg,#112038,#2a537f)] px-5 py-3 font-mono text-sm font-semibold text-white shadow-[0_18px_28px_rgba(17,32,56,0.18)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Join by id
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <input
-                  value={joinGameId}
-                  onChange={(event) => setJoinGameId(event.target.value)}
-                  placeholder="Game id"
-                  className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 font-mono text-sm text-ink outline-none transition focus:border-atlantic focus:ring-2 focus:ring-atlantic/20"
-                />
-                <button
-                  onClick={() => void handleJoinById()}
-                  disabled={!runtimeReady || !isConnected || isSubmitting}
-                  className="rounded-2xl bg-[linear-gradient(135deg,#112038,#2a537f)] px-5 py-3 font-mono text-sm font-semibold text-white shadow-[0_18px_28px_rgba(17,32,56,0.18)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  Join by id
-                </button>
+              <div className="panel-glass rounded-[28px] p-5">
+                <p className="section-label mb-2">Fast Briefing</p>
+                <h3 className="font-display text-2xl font-black text-ink">Match flow</h3>
+                <div className="mt-4 space-y-3">
+                  {TURN_FLOW.map((step, index) => (
+                    <div
+                      key={step}
+                      className="rounded-[22px] border border-white/75 bg-white/76 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-atlantic text-sm font-black text-white">
+                          {index + 1}
+                        </span>
+                        <p className="text-sm text-ink-muted">{step}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="grid gap-4 lg:grid-cols-2">
-            <div className="panel-glass rounded-[26px] p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-display text-lg font-bold text-ink">My Games</h3>
+          <section className="grid gap-4 xl:grid-cols-2">
+            <div className="panel-glass rounded-[28px] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-display text-2xl font-black text-ink">My Games</h3>
                 <span className="font-mono text-[11px] text-ink-faint">{myGames.length}</span>
               </div>
 
@@ -369,16 +725,16 @@ export function Game({ onBackHome }: GameProps) {
               ) : myGames.length === 0 ? (
                 <p className="font-mono text-xs text-ink-faint">No games linked to this wallet yet.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {myGames.map((game) => (
                     <button
                       key={game.gameId}
                       onClick={() => setSelectedGameId(game.gameId)}
-                      className="flex w-full items-center justify-between rounded-2xl border border-white/70 bg-white/72 px-4 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_28px_rgba(65,84,110,0.12)]"
+                      className="flex w-full items-center justify-between rounded-[24px] border border-white/75 bg-white/78 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.76)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_28px_rgba(65,84,110,0.12)]"
                     >
                       <div>
-                        <p className="font-mono text-sm font-bold text-ink">#{game.gameId}</p>
-                        <p className="font-mono text-[11px] text-ink-faint">{PHASE_LABELS[game.phase]}</p>
+                        <p className="font-display text-xl font-black text-ink">#{game.gameId}</p>
+                        <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">{PHASE_LABELS[game.phase]}</p>
                       </div>
                       <div className="text-right font-mono text-[11px] text-ink-muted">
                         <p>{shortAddress(game.playerOne)}</p>
@@ -390,36 +746,38 @@ export function Game({ onBackHome }: GameProps) {
               )}
             </div>
 
-            <div className="panel-glass rounded-[26px] p-5">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-display text-lg font-bold text-ink">Open Lobbies</h3>
+            <div className="panel-glass rounded-[28px] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="font-display text-2xl font-black text-ink">Open Lobbies</h3>
                 <span className="font-mono text-[11px] text-ink-faint">{openLobbies.length}</span>
               </div>
 
               {openLobbies.length === 0 ? (
                 <p className="font-mono text-xs text-ink-faint">No waiting lobbies right now.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {openLobbies.map((game) => (
                     <div
                       key={game.gameId}
-                      className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/72 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]"
+                      className="flex items-center justify-between rounded-[24px] border border-white/75 bg-white/78 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.76)]"
                     >
                       <div>
-                        <p className="font-mono text-sm font-bold text-ink">#{game.gameId}</p>
-                        <p className="font-mono text-[11px] text-ink-faint">Host {shortAddress(game.playerOne)}</p>
+                        <p className="font-display text-xl font-black text-ink">#{game.gameId}</p>
+                        <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+                          Host {shortAddress(game.playerOne)}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setSelectedGameId(game.gameId)}
-                          className="command-chip rounded-xl px-3 py-1.5 font-mono text-[11px] text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
+                          className="command-chip rounded-xl px-3 py-2 font-mono text-[11px] text-ink-muted transition hover:-translate-y-0.5 hover:text-ink"
                         >
                           View
                         </button>
                         <button
                           onClick={() => void joinGame(game.gameId)}
                           disabled={!runtimeReady || !canJoinGame(game, address ?? null) || isSubmitting}
-                          className="rounded-xl bg-[linear-gradient(135deg,#112038,#2a537f)] px-3 py-1.5 font-mono text-[11px] font-semibold text-white shadow-[0_12px_20px_rgba(17,32,56,0.16)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+                          className="rounded-xl bg-[linear-gradient(135deg,#112038,#2a537f)] px-3.5 py-2 font-mono text-[11px] font-semibold text-white shadow-[0_12px_20px_rgba(17,32,56,0.16)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
                         >
                           Join
                         </button>
@@ -431,7 +789,7 @@ export function Game({ onBackHome }: GameProps) {
             </div>
           </section>
         </div>
-      ) : isLoadingGame && selectedSummary?.phase !== 'LOBBY' && pyramid.length === 0 ? (
+      ) : showLoadingState ? (
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-8 md:px-6">
           <section className="panel-steel rounded-[30px] p-8 text-center">
             <p className="section-label">Syncing</p>
@@ -439,23 +797,25 @@ export function Game({ onBackHome }: GameProps) {
             <p className="mt-2 text-sm text-ink-muted">Fetching the latest board, dossiers, and faction telemetry from Torii.</p>
           </section>
         </div>
-      ) : selectedSummary && selectedSummary.phase === 'LOBBY' ? (
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-8 md:px-6">
-          <section className="panel-steel rounded-[30px] p-8 text-center">
+      ) : showLobbyWaitingState ? (
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-8 md:px-6">
+          <section className="panel-steel rounded-[32px] p-8 text-center">
             <p className="section-label">Lobby</p>
-            <h2 className="mt-2 font-display text-3xl font-black text-ink">Waiting for a rival commander</h2>
-            <p className="mt-2 text-sm text-ink-muted">
-              Share game id <span className="font-mono font-bold text-ink">#{selectedSummary.gameId}</span> with your opponent.
+            <h2 className="mt-2 font-display text-4xl font-black text-ink">Waiting for a rival commander</h2>
+            <p className="mt-3 text-sm text-ink-muted">
+              Share game id <span className="font-mono font-bold text-ink">#{selectedSummary!.gameId}</span> with your opponent.
             </p>
 
-            <div className="mt-6 grid gap-3 rounded-[26px] border border-white/80 bg-white/78 p-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.76)] sm:grid-cols-2">
+            <div className="mt-6 grid gap-3 rounded-[28px] border border-white/80 bg-white/78 p-5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.76)] sm:grid-cols-2">
               <div>
                 <p className="section-label mb-2">Atlantic</p>
                 <p className="font-mono text-sm font-bold text-ink">{shortAddress(players[0].address)}</p>
               </div>
               <div>
                 <p className="section-label mb-2">Continental</p>
-                <p className="font-mono text-sm font-bold text-ink">{isZeroAddress(players[1].address) ? 'Waiting...' : shortAddress(players[1].address)}</p>
+                <p className="font-mono text-sm font-bold text-ink">
+                  {isZeroAddress(players[1].address) ? 'Waiting...' : shortAddress(players[1].address)}
+                </p>
               </div>
             </div>
 
@@ -467,187 +827,243 @@ export function Game({ onBackHome }: GameProps) {
                 Back to lobby list
               </button>
               <button
-                onClick={() => void joinGame(selectedSummary.gameId)}
-                disabled={!runtimeReady || !canJoinGame(selectedSummary, address ?? null) || isSubmitting}
+                onClick={() => void joinGame(selectedSummary!.gameId)}
+                disabled={!runtimeReady || !canJoinGame(selectedSummary!, address ?? null) || isSubmitting}
                 className="rounded-2xl bg-[linear-gradient(135deg,#112038,#2a537f)] px-5 py-2.5 font-mono text-sm font-semibold text-white shadow-[0_18px_28px_rgba(17,32,56,0.18)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Join this game
+                Join this match
               </button>
             </div>
           </section>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto px-3 pb-4 md:px-5 md:pb-5 lg:min-h-0 lg:overflow-hidden">
+        <div className="flex-1 min-h-0 px-2 pb-2 pt-2 md:px-3">
           {isLoadingGame && (
-            <div className="mx-auto mb-3 w-full max-w-[1600px] rounded-2xl border border-white/70 bg-white/72 px-4 py-2 font-mono text-xs text-ink-faint shadow-[0_12px_22px_rgba(72,93,119,0.08)]">
+            <div className="mb-3 w-full rounded-2xl border border-white/70 bg-white/72 px-4 py-3 font-mono text-xs text-ink-faint shadow-[0_12px_22px_rgba(72,93,119,0.08)]">
               Syncing live game state...
             </div>
           )}
 
-          <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 lg:h-full lg:min-h-0">
-            <PlayerStatsBar playerIndex={topPlayer} isBottom={false} />
-
-            <section className="table-surface flex flex-1 flex-col rounded-[32px] px-3 py-3 md:px-5 md:py-5 lg:min-h-0">
-              <div className="relative z-10 flex flex-col gap-3 xl:hidden">
-                <div className="hud-scroll -mx-1 flex gap-3 overflow-x-auto px-1 pb-1 scrollbar-hidden">
-                  <div className="panel-glass min-w-[280px] rounded-[24px] p-4">
-                    <p className="section-label mb-2">Command Briefing</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-atlantic/10 px-3 py-1 font-mono text-[11px] font-semibold text-atlantic">
-                        {PHASE_LABELS[phase]}
-                      </span>
-                      <span className="rounded-full bg-white/70 px-3 py-1 font-mono text-[11px] text-ink-muted">
-                        {currentTurnLabel ?? 'Awaiting orders'}
-                      </span>
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-ink-muted">{phaseObjective}</p>
-                    <p className="mt-3 font-mono text-[11px] text-ink-faint">
-                      Tap to inspect. Drag to deploy. Drag downward to salvage.
-                    </p>
-                  </div>
-
-                  <div className="panel-glass min-w-[300px] rounded-[24px] p-4">
-                    <p className="section-label mb-3">AGI Pressure</p>
-                    <AGITrack />
-                  </div>
-
-                  <div className="panel-glass min-w-[320px] rounded-[24px] p-4">
-                    <p className="section-label mb-3">Escalation Index</p>
-                    <EscalationTrack />
-                  </div>
+          <div className="flex h-full w-full flex-col gap-3 overflow-hidden">
+            <section className="hud-compact-bar rounded-[24px] px-3 py-2.5 md:px-4 md:py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  {(onBackHome || selectedGameId !== null) && (
+                    <button
+                      onClick={() => {
+                        setSelectedGameId(null)
+                        onBackHome?.()
+                      }}
+                      className="hud-utility-btn"
+                    >
+                      Back
+                    </button>
+                  )}
                 </div>
 
-                <div className="relative z-10 flex min-h-[360px] flex-1 flex-col rounded-[28px] border border-white/65 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(240,245,251,0.84)_35%,rgba(223,231,240,0.78)_100%)] px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_24px_40px_rgba(83,102,129,0.14)] md:min-h-[clamp(360px,44vh,430px)] md:px-5 md:py-5">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="section-label mb-2">Draft Grid</p>
-                      <h2 className="font-display text-2xl font-black text-ink md:text-[2rem]">Operational theater</h2>
-                    </div>
-                    <div className="rounded-2xl border border-white/75 bg-white/66 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-faint">Current sale rate</p>
-                      <p className="mt-1 font-display text-lg font-black text-continental">Sell +{sellValue}</p>
-                    </div>
-                  </div>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-2">
+                  <span className="hud-status-pill">{PHASE_LABELS[phase]}</span>
+                  <span className="hud-status-pill">Age {AGE_LABELS[age]}</span>
+                  <span className={`hud-status-pill ${currentTurnIsLocalWallet ? 'hud-status-pill-live' : ''}`}>
+                    Turn: {currentTurnLabel ?? 'Awaiting seat'}
+                  </span>
+                  <span className="hud-status-pill">Sell +{sellValue}</span>
+                  <span className="hud-status-pill">Win: {winner === null ? 'Live' : WIN_CONDITION_LABELS[winCondition]}</span>
+                </div>
 
-                  <PlayField
-                    playerIndex={topPlayer}
-                    label="Enemy network"
-                    emptyHint="Enemy has not deployed any dossiers yet."
-                    compact
-                  />
-
-                  <div className="relative my-3 flex flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-white/70 bg-[radial-gradient(circle_at_center,rgba(47,109,246,0.08),rgba(255,255,255,0)_62%)] px-2 py-4 md:px-4 md:py-5">
-                    <CardPyramid
-                      key={`${selectedGameId ?? 'none'}-${age}`}
-                      dropRefs={dropRefs}
-                      onPlay={(position) => void playCardAt(position)}
-                      onDiscard={(position) => void discardCardAt(position)}
-                      onDragOverZone={setActiveDragZone}
-                    />
-                  </div>
-
-                  <PlayField
-                    ref={playFieldRef}
-                    playerIndex={bottomPlayer}
-                    isHighlighted={activeDragZone === 'play'}
-                    label="Deploy to your network"
-                    emptyHint="Drag a drafted card here to deploy it to your network."
-                    targetLabel="Drop to deploy"
-                    compact
-                  />
-
-                  <DiscardZone
-                    ref={discardRef}
-                    sellValue={sellValue}
-                    isHighlighted={activeDragZone === 'discard'}
-                    compact
-                  />
+                <div className="flex flex-wrap items-center gap-2">
+                  {walletMode === 'burner' ? (
+                    <>
+                      <span className="hud-inline-chip text-white/80">
+                        Seat {String((burnerIndex ?? 0) + 1).padStart(2, '0')}/{String(Math.max(1, burnerAddresses.length)).padStart(2, '0')} {shortAddress(address)}
+                      </span>
+                      {burnerAddresses.length > 1 && (
+                        <select
+                          value={burnerIndex ?? 0}
+                          onChange={(event) => switchBurner(Number(event.target.value))}
+                          className="hud-select"
+                        >
+                          {burnerAddresses.map((burnerAddress, index) => (
+                            <option key={burnerAddress} value={index}>
+                              {`Seat ${index + 1} ${shortAddress(burnerAddress)}`}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </>
+                  ) : isConnected ? (
+                    <button
+                      onClick={() => disconnect()}
+                      disabled={isDisconnecting}
+                      className="hud-utility-btn"
+                    >
+                      {shortAddress(address)}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        if (controllerConnector) {
+                          void connect({ connector: controllerConnector })
+                        }
+                      }}
+                      disabled={!controllerConnector || isPending}
+                      className="hud-utility-btn"
+                    >
+                      Connect
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="relative z-10 hidden flex-1 xl:grid xl:min-h-0 xl:grid-cols-[minmax(240px,0.7fr)_minmax(0,1.3fr)] xl:gap-4">
-                <div className="flex min-h-0 flex-col gap-3">
-                  <div className="panel-glass rounded-[24px] p-4">
-                    <p className="section-label mb-2">Command Briefing</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-atlantic/10 px-3 py-1 font-mono text-[11px] font-semibold text-atlantic">
-                        {PHASE_LABELS[phase]}
-                      </span>
-                      <span className="rounded-full bg-white/70 px-3 py-1 font-mono text-[11px] text-ink-muted">
-                        {currentTurnLabel ?? 'Awaiting orders'}
-                      </span>
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-ink-muted">{phaseObjective}</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-5">
+                  <div className="hud-resource-cell hud-resource-cell-slim">
+                    <span className="hud-resource-label">{HUD_GLYPHS.capital} Capital</span>
+                    <span className="hud-resource-value">{hudFocusPlayer.capital}</span>
                   </div>
-
-                  <div className="panel-glass rounded-[24px] p-4">
-                    <p className="section-label mb-3">AGI Pressure</p>
-                    <AGITrack />
+                  <div className="hud-resource-cell hud-resource-cell-slim">
+                    <span className="hud-resource-label">{RESOURCE_ICONS.energy} Energy</span>
+                    <span className="hud-resource-value">{hudFocusPlayer.production.energy}</span>
                   </div>
-
-                  <div className="panel-glass rounded-[24px] p-4">
-                    <p className="section-label mb-3">Escalation Index</p>
-                    <EscalationTrack />
+                  <div className="hud-resource-cell hud-resource-cell-slim">
+                    <span className="hud-resource-label">{RESOURCE_ICONS.materials} Materials</span>
+                    <span className="hud-resource-value">{hudFocusPlayer.production.materials}</span>
                   </div>
-                </div>
-
-                <div className="relative z-10 flex min-h-0 flex-col rounded-[28px] border border-white/65 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.9),rgba(240,245,251,0.84)_35%,rgba(223,231,240,0.78)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_24px_40px_rgba(83,102,129,0.14)] xl:overflow-hidden">
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="section-label mb-2">Draft Grid</p>
-                      <h2 className="font-display text-[2rem] font-black leading-none text-ink">Operational theater</h2>
-                    </div>
-                    <div className="rounded-2xl border border-white/75 bg-white/66 px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-                      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ink-faint">Current sale rate</p>
-                      <p className="mt-1 font-display text-lg font-black text-continental">Sell +{sellValue}</p>
-                    </div>
+                  <div className="hud-resource-cell hud-resource-cell-slim">
+                    <span className="hud-resource-label">{RESOURCE_ICONS.compute} Compute</span>
+                    <span className="hud-resource-value">{hudFocusPlayer.production.compute}</span>
                   </div>
-
-                  <PlayField
-                    playerIndex={topPlayer}
-                    label="Enemy network"
-                    emptyHint="Enemy has not deployed any dossiers yet."
-                    compact
-                  />
-
-                  <div className="relative my-3 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[24px] border border-white/70 bg-[radial-gradient(circle_at_center,rgba(47,109,246,0.08),rgba(255,255,255,0)_62%)] px-2 py-3">
-                    <CardPyramid
-                      key={`${selectedGameId ?? 'none'}-${age}`}
-                      dropRefs={dropRefs}
-                      onPlay={(position) => void playCardAt(position)}
-                      onDiscard={(position) => void discardCardAt(position)}
-                      onDragOverZone={setActiveDragZone}
-                    />
-
-                    <div className="pointer-events-none absolute inset-x-5 bottom-4 flex items-end justify-between">
-                      <ActionDock
-                        ref={playFieldRef}
-                        label="Deploy"
-                        value="Play"
-                        variant="deploy"
-                        isHighlighted={activeDragZone === 'play'}
-                      />
-                      <ActionDock
-                        ref={discardRef}
-                        label="Sell"
-                        value={`+${sellValue}`}
-                        variant="sell"
-                        isHighlighted={activeDragZone === 'discard'}
-                      />
-                    </div>
+                  <div className="hud-resource-cell hud-resource-cell-slim">
+                    <span className="hud-resource-label">{HUD_GLYPHS.selection} Card</span>
+                    <span className="hud-resource-value text-base">{selectedNode ? selectedNode.card.type : 'None'}</span>
                   </div>
-
-                  <PlayField
-                    playerIndex={bottomPlayer}
-                    label="Your network"
-                    emptyHint="Your deployed dossiers appear here."
-                    compact
-                  />
-                </div>
               </div>
             </section>
 
-            <PlayerStatsBar playerIndex={bottomPlayer} isBottom={true} />
+            <div className="min-h-0 grid flex-1 gap-3 xl:grid-cols-[220px_minmax(0,1fr)]">
+              <aside className="hidden min-h-0 xl:flex xl:flex-col xl:gap-3">
+                <div className="hud-panel rounded-[26px] p-3">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <p className="section-label text-white/50">{HUD_GLYPHS.points} Victory tracks</p>
+                    <span className="hud-inline-chip text-[10px] text-white/68">
+                      {hudFocusCommander.isLocal ? 'Your pace' : 'Board pace'}
+                    </span>
+                  </div>
+                  <div className="hud-victory-rail">
+                    {victoryTracks.map((track) => (
+                      <div key={track.key} className="hud-victory-bar">
+                        <span className="hud-victory-glyph">{track.glyph}</span>
+                        <div className="hud-victory-meter">
+                          <div
+                            className={`hud-victory-fill ${track.fillClass}`}
+                            style={{ height: `${track.progress * 100}%` }}
+                          />
+                        </div>
+                        <span className="hud-victory-label">{track.label}</span>
+                        <span className="hud-victory-value">{track.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <CommanderHudCard
+                  player={atlanticHud.player}
+                  agi={atlanticHud.agi}
+                  escalation={atlanticHud.escalation}
+                  systems={atlanticHud.systems}
+                  projectedPoints={atlanticHud.projectedPoints}
+                  isActive={atlanticHud.isActive}
+                  isLocal={atlanticHud.isLocal}
+                  onHeroClick={atlanticHud.isLocal && canInvokeHero ? toggleHeroPicker : undefined}
+                  canInvokeHero={atlanticHud.isLocal ? canInvokeHero : false}
+                  heroSurcharge={atlanticHud.isLocal ? localHeroSurcharge : undefined}
+                />
+
+                <CommanderHudCard
+                  player={continentalHud.player}
+                  agi={continentalHud.agi}
+                  escalation={continentalHud.escalation}
+                  systems={continentalHud.systems}
+                  projectedPoints={continentalHud.projectedPoints}
+                  isActive={continentalHud.isActive}
+                  isLocal={continentalHud.isLocal}
+                  onHeroClick={continentalHud.isLocal && canInvokeHero ? toggleHeroPicker : undefined}
+                  canInvokeHero={continentalHud.isLocal ? canInvokeHero : false}
+                  heroSurcharge={continentalHud.isLocal ? localHeroSurcharge : undefined}
+                />
+              </aside>
+
+              <section className="table-surface relative min-h-0 overflow-hidden rounded-[34px] px-4 py-4 md:px-6 md:py-5">
+                <div className="relative z-10 flex h-full min-h-0 flex-col">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="section-label mb-1">{HUD_GLYPHS.board} Operational Theater</p>
+                      <h2 className="font-display text-[2.1rem] font-black leading-none text-ink md:text-[2.5rem]">
+                        Battle board
+                      </h2>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-white/80 bg-white/86 px-3 py-1 font-mono text-[11px] font-semibold text-continental">
+                        Sell +{sellValue}
+                      </span>
+                      <span className="rounded-full border border-white/80 bg-white/86 px-3 py-1 font-mono text-[11px] font-semibold text-ink-muted">
+                        {currentTurnIsLocalWallet ? 'Your move' : 'Observe'}
+                      </span>
+                      <button
+                        onClick={() => setIsGuideOpen((currentOpen) => !currentOpen)}
+                        className="rounded-full border border-atlantic/25 bg-atlantic/10 px-3 py-1 font-mono text-[11px] font-semibold text-atlantic transition hover:-translate-y-0.5"
+                      >
+                        {isGuideOpen ? 'Hide guide' : 'Show guide'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <PlayField
+                    playerIndex={topPlayer}
+                    label="Enemy network"
+                    emptyHint="Enemy deployments appear here."
+                    compact
+                  />
+
+                  <div className="relative my-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/75 bg-[radial-gradient(circle_at_center,rgba(47,109,246,0.14),rgba(255,255,255,0)_42%),linear-gradient(180deg,rgba(255,255,255,0.74),rgba(228,236,245,0.58))] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),transparent_35%,rgba(17,32,56,0.04))]" />
+                    <CardPyramid
+                      key={`${selectedGameId ?? 'none'}-${age}`}
+                      dropRefs={dropRefs}
+                      onPlay={(position) => void playCardAt(position)}
+                      onDiscard={(position) => void discardCardAt(position)}
+                      onDragOverZone={setActiveDragZone}
+                    />
+                  </div>
+
+                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
+                    <PlayField
+                      ref={playFieldRef}
+                      playerIndex={bottomPlayer}
+                      isHighlighted={activeDragZone === 'play'}
+                      label="Your network"
+                      emptyHint="Deploy drafted cards here."
+                      targetLabel="Drop to deploy"
+                      compact
+                    />
+                    <DiscardZone
+                      ref={discardRef}
+                      sellValue={sellValue}
+                      isHighlighted={activeDragZone === 'discard'}
+                      compact
+                    />
+                  </div>
+                </div>
+              </section>
+
+            </div>
+
+            <GuideSidebar
+              open={isGuideOpen}
+              onClose={() => setIsGuideOpen(false)}
+              missionQuestion={missionQuestion}
+              missionAnswer={missionAnswer}
+            />
           </div>
 
           <AnimatePresence>
@@ -705,10 +1121,10 @@ export function Game({ onBackHome }: GameProps) {
                   animate={{ scale: 1, opacity: 1 }}
                   className="panel-steel rounded-[32px] p-10 text-center"
                 >
-                  <h2 className="font-display text-3xl font-black text-ink mb-2">
+                  <h2 className="mb-2 font-display text-3xl font-black text-ink">
                     Age {AGE_LABELS[age]} Complete
                   </h2>
-                  <p className="text-sm text-ink-muted mb-6">
+                  <p className="mb-6 text-sm text-ink-muted">
                     {isCurrentUserTurn
                       ? 'Advance the contracts to the next age when ready.'
                       : 'Waiting for the active player to start the next age.'}
@@ -718,7 +1134,7 @@ export function Game({ onBackHome }: GameProps) {
                     disabled={!isCurrentUserTurn || isSubmitting}
                     className="rounded-2xl bg-[linear-gradient(135deg,#112038,#2a537f)] px-8 py-3 font-display text-sm font-bold text-white shadow-[0_20px_32px_rgba(17,32,56,0.22)] transition hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    Begin Age {AGE_LABELS[(age + 1) as 1 | 2 | 3] ?? 'III'}
+                    Begin Age {AGE_LABELS[nextAgeValue]}
                   </button>
                 </motion.div>
               </motion.div>
@@ -737,9 +1153,9 @@ export function Game({ onBackHome }: GameProps) {
                   animate={{ scale: 1, opacity: 1 }}
                   className="panel-steel rounded-[32px] p-10 text-center"
                 >
-                  <h2 className="font-display text-3xl font-black text-ink mb-2">Game Over</h2>
-                  <p className="font-display text-lg font-bold text-ink mb-1">{winnerLabel}</p>
-                  <p className="text-sm text-ink-muted mb-6">{WIN_CONDITION_LABELS[winCondition]}</p>
+                  <h2 className="mb-2 font-display text-3xl font-black text-ink">Game Over</h2>
+                  <p className="mb-1 font-display text-lg font-bold text-ink">{winnerLabel}</p>
+                  <p className="mb-6 text-sm text-ink-muted">{WIN_CONDITION_LABELS[winCondition]}</p>
                   <div className="flex justify-center gap-2">
                     <button
                       onClick={() => setSelectedGameId(null)}

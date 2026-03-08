@@ -63,6 +63,15 @@ body::after {
   background: radial-gradient(circle at center, transparent 46%, rgba(17, 32, 56, 0.18) 100%);
 }
 
+body.game-active {
+  overflow: hidden;
+}
+
+body.game-active #root {
+  height: 100vh;
+  overflow: hidden;
+}
+
 .home-stage {
   position: relative;
   overflow: hidden;
@@ -185,13 +194,34 @@ body::after {
   }
 }
 
-@media (min-width: 1024px) {
-  html,
-  body,
-  #root {
-    height: 100vh;
-    overflow: hidden;
-  }
+.game-shell {
+  position: relative;
+}
+
+.game-shell::before {
+  content: "";
+  position: fixed;
+  inset: auto auto -10rem -8rem;
+  width: 26rem;
+  height: 26rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(47, 109, 246, 0.18), transparent 70%);
+  filter: blur(28px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.game-shell::after {
+  content: "";
+  position: fixed;
+  inset: 7rem -8rem auto auto;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(210, 106, 56, 0.16), transparent 70%);
+  filter: blur(26px);
+  pointer-events: none;
+  z-index: -1;
 }
 
 .panel-glass {
@@ -264,6 +294,317 @@ body::after {
   border: 1px solid rgba(255, 255, 255, 0.7);
   background: rgba(247, 251, 255, 0.72);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.hud-topbar {
+  border: 1px solid rgba(111, 145, 189, 0.28);
+  background:
+    linear-gradient(180deg, rgba(8, 18, 34, 0.94), rgba(14, 27, 49, 0.9)),
+    linear-gradient(90deg, rgba(47, 109, 246, 0.08), rgba(210, 106, 56, 0.08));
+  box-shadow:
+    0 24px 50px rgba(12, 19, 34, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(47, 109, 246, 0.08);
+}
+
+.hud-compact-bar {
+  border: 1px solid rgba(111, 145, 189, 0.28);
+  background:
+    linear-gradient(180deg, rgba(8, 18, 34, 0.96), rgba(13, 24, 45, 0.92)),
+    linear-gradient(90deg, rgba(47, 109, 246, 0.07), rgba(210, 106, 56, 0.07));
+  box-shadow:
+    0 18px 32px rgba(10, 15, 28, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.hud-command-core {
+  border: 1px solid rgba(128, 162, 207, 0.24);
+  background:
+    linear-gradient(180deg, rgba(19, 35, 62, 0.96), rgba(13, 24, 45, 0.92)),
+    radial-gradient(circle at top, rgba(47, 109, 246, 0.16), transparent 46%);
+  box-shadow:
+    0 18px 34px rgba(7, 12, 24, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.hud-panel {
+  border: 1px solid rgba(128, 162, 207, 0.22);
+  background:
+    linear-gradient(180deg, rgba(17, 31, 54, 0.94), rgba(10, 19, 37, 0.9)),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 46%);
+  box-shadow:
+    0 18px 34px rgba(7, 12, 24, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hud-command-plate {
+  border: 1px solid rgba(128, 162, 207, 0.22);
+  border-radius: 1.5rem;
+  padding: 0.85rem;
+  box-shadow:
+    0 18px 34px rgba(7, 12, 24, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hud-panel-atlantic {
+  background:
+    linear-gradient(180deg, rgba(17, 31, 54, 0.96), rgba(10, 19, 37, 0.92)),
+    radial-gradient(circle at top left, rgba(47, 109, 246, 0.24), transparent 44%);
+}
+
+.hud-panel-continental {
+  background:
+    linear-gradient(180deg, rgba(17, 31, 54, 0.96), rgba(10, 19, 37, 0.92)),
+    radial-gradient(circle at top right, rgba(210, 106, 56, 0.22), transparent 44%);
+}
+
+.hud-status-pill {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.32rem 0.68rem;
+  color: rgba(255, 255, 255, 0.76);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hud-status-pill-live {
+  border-color: rgba(61, 221, 160, 0.32);
+  background: rgba(16, 185, 129, 0.14);
+  color: #b9ffdd;
+}
+
+.hud-icon-badge {
+  display: inline-flex;
+  height: 1.45rem;
+  width: 1.45rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.hud-resource-cell {
+  display: flex;
+  min-height: 4rem;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  padding: 0.72rem 0.85rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.hud-resource-cell-compact {
+  min-height: 3rem;
+}
+
+.hud-resource-cell-slim {
+  min-height: 2.8rem;
+  padding: 0.5rem 0.72rem;
+}
+
+.hud-resource-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hud-resource-value {
+  color: #f4f8ff;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.hud-inline-chip {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.32rem 0.62rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hud-utility-btn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.38rem 0.78rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: transform 140ms ease, background 140ms ease, color 140ms ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hud-utility-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+.hud-utility-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.hud-utility-btn-primary {
+  border-color: rgba(72, 144, 255, 0.28);
+  background: linear-gradient(135deg, rgba(47, 109, 246, 0.3), rgba(19, 48, 94, 0.8));
+  color: white;
+}
+
+.hud-select {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.38rem 0.75rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hud-guide {
+  border: 1px solid rgba(111, 145, 189, 0.26);
+  background:
+    linear-gradient(180deg, rgba(8, 18, 34, 0.96), rgba(14, 27, 49, 0.92)),
+    radial-gradient(circle at top right, rgba(47, 109, 246, 0.12), transparent 42%);
+  box-shadow:
+    0 22px 44px rgba(9, 16, 30, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.hud-guide-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.hud-victory-rail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.hud-victory-bar {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hud-victory-glyph {
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.hud-victory-meter {
+  position: relative;
+  display: flex;
+  height: 6.75rem;
+  width: 100%;
+  max-width: 2.5rem;
+  align-items: flex-end;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+    linear-gradient(180deg, rgba(8, 18, 34, 0.48), rgba(8, 18, 34, 0.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -14px 22px rgba(8, 18, 34, 0.24);
+}
+
+.hud-victory-meter::after {
+  content: '';
+  position: absolute;
+  inset: 0.4rem 0.45rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.hud-victory-fill {
+  width: 100%;
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.18);
+}
+
+.hud-victory-fill-agi {
+  background: linear-gradient(180deg, #7ab6ff, #2f6df6);
+}
+
+.hud-victory-fill-esc {
+  background: linear-gradient(180deg, #ff8b7a, #ff4d66);
+}
+
+.hud-victory-fill-sys {
+  background: linear-gradient(180deg, #73f0be, #14b87a);
+}
+
+.hud-victory-fill-pts {
+  background: linear-gradient(180deg, #ffd780, #ff9b36);
+}
+
+.hud-victory-label {
+  color: rgba(255, 255, 255, 0.56);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hud-victory-value {
+  color: #f4f8ff;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hud-win-chip {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0.5rem 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .scrollbar-hidden {
