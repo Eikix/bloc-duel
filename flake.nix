@@ -43,28 +43,7 @@
         pkgs,
         system,
         ...
-      }: let
-        wrapProcessCompose = name: package: pkgs.writeShellScript name ''
-          set -euo pipefail
-
-          base_script=${package}/bin/${name}
-          process_compose_path="$(${pkgs.gnugrep}/bin/grep '^export PATH="' "$base_script" | ${pkgs.coreutils}/bin/head -n1)"
-          process_compose_path="''${process_compose_path#export PATH=\"}"
-          process_compose_path="''${process_compose_path%:\$PATH\"}"
-
-          config_line="$(${pkgs.gnugrep}/bin/grep 'PC_CONFIG_FILES=' "$base_script" | ${pkgs.coreutils}/bin/tail -n1)"
-          config_file="''${config_line#*PC_CONFIG_FILES=}"
-          config_file="''${config_file%% *}"
-
-          export PATH="$process_compose_path:$PATH"
-
-          if [ "$#" -eq 0 ]; then
-            exec process-compose --use-uds -f "$config_file" up -t=false --keep-project
-          fi
-
-          exec process-compose --use-uds -f "$config_file" "$@"
-        '';
-      in {
+      }: {
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
           config.allowUnfree = true;
@@ -78,19 +57,19 @@
           # Start with Katana + Torii + Vite dev server (local contracts)
           start = {
             type = "app";
-            program = "${wrapProcessCompose "start" config.process-compose.start.outputs.package}";
+            program = "${config.process-compose.start.outputs.package}/bin/start";
           };
 
           # Start with local Torii indexing mainnet + Vite dev server
           start-mainnet = {
             type = "app";
-            program = "${wrapProcessCompose "start-mainnet" config.process-compose.start-mainnet.outputs.package}";
+            program = "${config.process-compose.start-mainnet.outputs.package}/bin/start-mainnet";
           };
 
           # Start with remote Torii + Vite dev server only (pure client)
           start-mainnet-torii = {
             type = "app";
-            program = "${wrapProcessCompose "start-mainnet-torii" config.process-compose.start-mainnet-torii.outputs.package}";
+            program = "${config.process-compose.start-mainnet-torii.outputs.package}/bin/start-mainnet-torii";
           };
         };
       };

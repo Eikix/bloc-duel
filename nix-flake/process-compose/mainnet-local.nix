@@ -22,39 +22,11 @@
         npm-install = {
           command = "${pkgs.writeShellScript "npm-install" ''
             set -e
-            PROJECT_DIR="$PWD"
-            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
-              PROJECT_DIR="$PC_PROJ_DIR"
-            fi
-            cd "$PROJECT_DIR"
-            NPM="${pkgs.nodejs_20}/bin/npm"
-            NODE="${pkgs.nodejs_20}/bin/node"
-            STAMP_FILE="node_modules/.bloc-duel-node-version"
-            TARGET_NODE_VERSION=$("$NODE" --version)
-            REINSTALL_REASON=""
-
             if [ ! -d node_modules ]; then
-              REINSTALL_REASON="node_modules is missing"
-            elif [ ! -f "$STAMP_FILE" ]; then
-              REINSTALL_REASON="node_modules was not installed by the Nix launcher"
+              echo "📦 Installing npm dependencies..."
+              ${pkgs.nodejs_20}/bin/npm install
             else
-              INSTALLED_NODE_VERSION=$(<"$STAMP_FILE")
-              if [ "$INSTALLED_NODE_VERSION" != "$TARGET_NODE_VERSION" ]; then
-                REINSTALL_REASON="node_modules was built with Node.js $INSTALLED_NODE_VERSION (expected $TARGET_NODE_VERSION)"
-              elif ! "$NPM" ls --depth=0 > /dev/null 2>&1; then
-                REINSTALL_REASON="npm dependency tree is incomplete or out of sync"
-              fi
-            fi
-
-            if [ -n "$REINSTALL_REASON" ]; then
-              echo "🔄 $REINSTALL_REASON"
-              echo "📦 Installing npm dependencies with Node.js $TARGET_NODE_VERSION..."
-              ${pkgs.coreutils}/bin/rm -rf node_modules
-              "$NPM" install --include=dev
-              ${pkgs.coreutils}/bin/mkdir -p node_modules
-              printf '%s\n' "$TARGET_NODE_VERSION" > "$STAMP_FILE"
-            else
-              echo "✅ npm dependencies are already in sync"
+              echo "✅ node_modules already exists, skipping install"
             fi
           ''}";
           availability.restart = "no";
@@ -64,28 +36,10 @@
         preflight-check = {
           command = "${pkgs.writeShellScript "preflight-check" ''
             set -e
-            PROJECT_DIR="$PWD"
-            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
-              PROJECT_DIR="$PC_PROJ_DIR"
-            fi
-            cd "$PROJECT_DIR"
 
             echo "🔍 Preflight Checks for Mainnet-Local Mode"
             echo "=========================================="
             echo ""
-
-            normalize_address() {
-              local value
-              value=$(printf '%s' "$1" | ${pkgs.coreutils}/bin/tr '[:upper:]' '[:lower:]')
-              value=''${value#0x}
-              value=$(printf '%s' "$value" | ${pkgs.gnused}/bin/sed 's/^0*//')
-
-              if [ -z "$value" ]; then
-                value="0"
-              fi
-
-              printf '0x%s' "$value"
-            }
 
             # Check 1: dojo_mainnet.toml exists
             if [ ! -f contracts/dojo_mainnet.toml ]; then
@@ -99,41 +53,23 @@
             fi
             echo "✅ Found contracts/dojo_mainnet.toml"
 
-            # Check 2: mainnet manifest exists and has a world address
-            if [ ! -f contracts/manifest_mainnet.json ]; then
-              echo "❌ FAILED: contracts/manifest_mainnet.json not found!"
-              echo ""
-              echo "This should have been created during deployment."
-              echo "Re-run: cd contracts && sozo -P mainnet migrate"
-              echo ""
-              exit 1
-            fi
-            echo "✅ Found contracts/manifest_mainnet.json"
+            # Check 2: world_address is set
+            WORLD_ADDRESS=$(${pkgs.gnugrep}/bin/grep 'world_address' contracts/dojo_mainnet.toml | ${pkgs.gnused}/bin/sed 's/.*"\(.*\)".*/\1/' | ${pkgs.coreutils}/bin/tr -d ' ')
 
-            WORLD_ADDRESS=$(${pkgs.jq}/bin/jq -r '.world.address' contracts/manifest_mainnet.json)
-
-            if [ -z "$WORLD_ADDRESS" ] || [ "$WORLD_ADDRESS" = "null" ]; then
-              echo "❌ FAILED: Could not read world address from contracts/manifest_mainnet.json"
+            if [ -z "$WORLD_ADDRESS" ] || [ "$WORLD_ADDRESS" = "" ]; then
+              echo "❌ FAILED: world_address not set in contracts/dojo_mainnet.toml"
               echo ""
               echo "Steps to deploy:"
               echo "  1. cd contracts"
               echo "  2. sozo -P mainnet migrate"
+              echo "  3. Copy the world address from output"
+              echo "  4. Update contracts/dojo_mainnet.toml:"
+              echo "     world_address = \"0x...\""
+              echo "     world_block = <block_number>"
               echo ""
               exit 1
             fi
-            echo "✅ Manifest world address: $WORLD_ADDRESS"
-
-            TOML_WORLD_ADDRESS=$(${pkgs.gnugrep}/bin/grep 'world_address' contracts/dojo_mainnet.toml | ${pkgs.gnused}/bin/sed 's/.*"\(.*\)".*/\1/' | ${pkgs.coreutils}/bin/tr -d ' ' || true)
-            if [ -n "$TOML_WORLD_ADDRESS" ] && [ "$(normalize_address "$TOML_WORLD_ADDRESS")" != "$(normalize_address "$WORLD_ADDRESS")" ]; then
-              echo "❌ FAILED: dojo_mainnet.toml world_address does not match contracts/manifest_mainnet.json"
-              echo "  dojo_mainnet.toml:        $TOML_WORLD_ADDRESS"
-              echo "  manifest_mainnet.json:   $WORLD_ADDRESS"
-              echo ""
-              echo "Update contracts/dojo_mainnet.toml to match the deployed manifest."
-              echo ""
-              exit 1
-            fi
-            echo "✅ dojo_mainnet.toml matches manifest_mainnet.json"
+            echo "✅ World address: $WORLD_ADDRESS"
 
             # Check 3: world_block is set
             WORLD_BLOCK=$(${pkgs.gnugrep}/bin/grep 'world_block' contracts/dojo_mainnet.toml | ${pkgs.gnused}/bin/sed 's/.*= *\([0-9]*\).*/\1/')
@@ -144,6 +80,17 @@
             else
               echo "✅ Starting from block: $WORLD_BLOCK"
             fi
+
+            # Check 4: manifest exists
+            if [ ! -f contracts/manifest_mainnet.json ]; then
+              echo "❌ FAILED: contracts/manifest_mainnet.json not found!"
+              echo ""
+              echo "This should have been created during deployment."
+              echo "Re-run: cd contracts && sozo -P mainnet migrate"
+              echo ""
+              exit 1
+            fi
+            echo "✅ Found contracts/manifest_mainnet.json"
 
             echo ""
             echo "✅ All preflight checks passed!"
@@ -159,14 +106,9 @@
         torii-mainnet = {
           command = "${pkgs.writeShellScript "torii-mainnet-start" ''
             set -e
-            PROJECT_DIR="$PWD"
-            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
-              PROJECT_DIR="$PC_PROJ_DIR"
-            fi
-            cd "$PROJECT_DIR"
 
             # Read configuration (already validated by preflight-check)
-            WORLD_ADDRESS=$(${pkgs.jq}/bin/jq -r '.world.address' contracts/manifest_mainnet.json)
+            WORLD_ADDRESS=$(${pkgs.gnugrep}/bin/grep 'world_address' contracts/dojo_mainnet.toml | ${pkgs.gnused}/bin/sed 's/.*"\(.*\)".*/\1/' | ${pkgs.coreutils}/bin/tr -d ' ')
             WORLD_BLOCK=$(${pkgs.gnugrep}/bin/grep 'world_block' contracts/dojo_mainnet.toml | ${pkgs.gnused}/bin/sed 's/.*= *\([0-9]*\).*/\1/')
 
             # Default to 0 if world_block not set
@@ -175,10 +117,10 @@
             fi
 
             DB_DIR=''${BLOCDUEL_DB_DIR:-$HOME/.cache/bloc-duel/torii-mainnet-db}
-            RELAY_PORT=''${BLOCDUEL_RELAY_PORT:-${toString common.ports.relayPort}}
-            WEBRTC_PORT=''${BLOCDUEL_WEBRTC_PORT:-${toString common.ports.webrtcPort}}
-            WEBSOCKET_PORT=''${BLOCDUEL_WEBSOCKET_PORT:-${toString common.ports.websocketPort}}
-            GRPC_PORT=''${BLOCDUEL_GRPC_PORT:-${toString common.ports.grpcPort}}
+            RELAY_PORT=''${BLOCDUEL_RELAY_PORT:-18090}
+            WEBRTC_PORT=''${BLOCDUEL_WEBRTC_PORT:-18091}
+            WEBSOCKET_PORT=''${BLOCDUEL_WEBSOCKET_PORT:-18092}
+            GRPC_PORT=''${BLOCDUEL_GRPC_PORT:-50051}
 
             echo "🌍 Starting Torii for Mainnet Contracts"
             echo "========================================"
@@ -214,27 +156,6 @@
         vite-mainnet = {
           command = "${pkgs.writeShellScript "vite-mainnet-start" ''
             set -e
-            PROJECT_DIR="$PWD"
-            if [ -n "''${PC_PROJ_DIR:-}" ] && [ "''${PC_PROJ_DIR}" != "null" ]; then
-              PROJECT_DIR="$PC_PROJ_DIR"
-            fi
-            cd "$PROJECT_DIR"
-
-            WORLD_ADDRESS=$(${pkgs.jq}/bin/jq -r '.world.address' contracts/manifest_mainnet.json)
-            ACTIONS_ADDRESS=$(${pkgs.jq}/bin/jq -r '.contracts[] | select(.tag == "bloc_duel-actions") | .address' contracts/manifest_mainnet.json)
-
-            if [ -z "$WORLD_ADDRESS" ] || [ "$WORLD_ADDRESS" = "null" ]; then
-              echo "❌ FAILED: Could not read world address from contracts/manifest_mainnet.json"
-              exit 1
-            fi
-
-            if [ -z "$ACTIONS_ADDRESS" ] || [ "$ACTIONS_ADDRESS" = "null" ]; then
-              echo "❌ FAILED: Could not read actions address from contracts/manifest_mainnet.json"
-              exit 1
-            fi
-
-            export PUBLIC_WORLD_ADDRESS="$WORLD_ADDRESS"
-            export PUBLIC_ACTIONS_ADDRESS="$ACTIONS_ADDRESS"
 
             echo "🚀 Starting frontend in mainnet-local mode..."
             echo ""
@@ -242,8 +163,6 @@
             echo "  • Mode: mainnet-local"
             echo "  • Frontend: http://localhost:${toString common.ports.vitePort}"
             echo "  • Torii: http://localhost:${toString common.ports.toriiPort}"
-            echo "  • World: $PUBLIC_WORLD_ADDRESS"
-            echo "  • Actions: $PUBLIC_ACTIONS_ADDRESS"
             echo ""
 
             ${pkgs.nodejs_20}/bin/npm run dev -- --port ${toString common.ports.vitePort}
@@ -255,10 +174,6 @@
           };
           environment = {
             NODE_ENV = "development";
-            PUBLIC_DOJO_MANIFEST_PROFILE = "mainnet";
-            PUBLIC_NODE_URL = "https://api.cartridge.gg/x/starknet/mainnet";
-            PUBLIC_STARKNET_NETWORK = "mainnet";
-            PUBLIC_TORII_URL = "http://127.0.0.1:${toString common.ports.toriiPort}";
           };
         };
       };
