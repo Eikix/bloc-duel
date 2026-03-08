@@ -41,7 +41,7 @@ function getDistinctSystems(snapshot: MatchSnapshot, playerIndex: 0 | 1) {
 
 function getPointsProgress(snapshot: MatchSnapshot, playerIndex: 0 | 1) {
   const player = snapshot.players[playerIndex]
-  return (snapshot.agiTrack[playerIndex] + getDistinctSystems(snapshot, playerIndex) + player.heroCount) / 10
+  return (snapshot.agiTrack[playerIndex] + getDistinctSystems(snapshot, playerIndex) * 2 + player.heroCount) / 18
 }
 
 function estimateLineEta(snapshot: MatchSnapshot, playerIndex: 0 | 1, line: StrategicLine) {
@@ -59,6 +59,7 @@ function estimateLineEta(snapshot: MatchSnapshot, playerIndex: 0 | 1, line: Stra
         - production.materials * 0.7
     case 'SYSTEMS':
       return Math.max(0, 4 - getDistinctSystems(snapshot, playerIndex)) * 3
+        + (snapshot.age === 1 ? 4 : snapshot.age === 2 ? 2 : 0)
         - production.materials * 1.2
         - production.compute * 0.7
         - production.energy * 0.3

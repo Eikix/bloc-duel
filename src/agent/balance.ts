@@ -318,7 +318,7 @@ function getBestLineProgress(snapshot: MatchSnapshot, playerIndex: 0 | 1) {
     snapshot.agiTrack[playerIndex] / AGI_WIN_TARGET,
     getEscalationProgress(snapshot, playerIndex),
     getDistinctSystems(snapshot, playerIndex) / 4,
-    (snapshot.agiTrack[playerIndex] + getDistinctSystems(snapshot, playerIndex) + player.heroCount) / 10,
+    (snapshot.agiTrack[playerIndex] + getDistinctSystems(snapshot, playerIndex) * 2 + player.heroCount) / 18,
   )
 }
 

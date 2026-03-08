@@ -431,7 +431,7 @@ pub mod actions {
 
         let unique = player.unique_systems();
 
-        if unique == 4 {
+        if unique == 4 && game.age == 3 {
             let winner = if player_index == 0 {
                 1
             } else {
