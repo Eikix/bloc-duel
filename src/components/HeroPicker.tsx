@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import type { CardType } from '../game/cards'
+import { getHeroSurcharge, getProjectedPoints } from '../game/rules'
 import StrategicMapBackground from './StrategicMapBackground'
 import { useGameStore, canAfford } from '../store/gameStore'
 import { formatCost } from '../game/format'
@@ -35,8 +36,9 @@ export default function HeroPicker() {
   const invokeHero = useGameStore((s) => s.invokeHero)
   const toggle = useGameStore((s) => s.toggleHeroPicker)
 
-  const surcharge = current.heroCount * 2
+  const surcharge = getHeroSurcharge(current)
   const heroSceneType = resolveHeroSceneType(heroes, current, surcharge)
+  const remainingHeroes = heroes.length
   const heroSceneTeams = ([0, 1] as const).map((playerIndex) => ({
     active: currentPlayerIndex === playerIndex,
     agi: agiTrack[playerIndex],
@@ -44,7 +46,7 @@ export default function HeroPicker() {
     escalation: getEscalationPressure(playerIndex, escalationTrack),
     faction: players[playerIndex].faction,
     heroCount: players[playerIndex].heroCount,
-    projectedPoints: agiTrack[playerIndex] + new Set(players[playerIndex].systems).size + players[playerIndex].heroCount,
+    projectedPoints: getProjectedPoints(players[playerIndex], agiTrack[playerIndex]),
     production: players[playerIndex].production,
     systems: new Set(players[playerIndex].systems).size,
   })) as [{
@@ -110,6 +112,9 @@ export default function HeroPicker() {
                 <h3 className="font-display text-3xl font-black text-ink">Invoke a historical hero</h3>
                 <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
                   Calling a hero replaces your normal draft pick this turn and permanently increases the surcharge for future hero calls.
+                </p>
+                <p className="mx-auto mt-2 max-w-2xl font-mono text-[11px] text-ink-faint">
+                  Shared hero market: {remainingHeroes} of 3 option{remainingHeroes === 1 ? '' : 's'} remain.
                 </p>
                 {surcharge > 0 && (
                   <span className="mt-3 inline-flex rounded-full border border-amber-300 bg-amber-50 px-3 py-1 font-mono text-[11px] font-semibold text-amber-700">

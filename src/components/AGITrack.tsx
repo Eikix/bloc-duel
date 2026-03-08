@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion'
+import { AGI_WIN_TARGET } from '../game/rules'
 import { useGameStore } from '../store/gameStore'
 
-const STEPS = [0, 1, 2, 3, 4, 5, 6]
+const STEPS = Array.from({ length: AGI_WIN_TARGET + 1 }, (_, index) => index)
 
 export default function AGITrack() {
   const agiTrack = useGameStore((s) => s.agiTrack)
@@ -25,12 +26,12 @@ export default function AGITrack() {
                 <p className={`font-mono text-xs font-semibold uppercase tracking-[0.14em] ${textColor}`}>
                   {players[playerIndex].name}
                 </p>
-                <p className="font-mono text-[10px] text-ink-faint">Push to 6 for an instant AGI victory.</p>
+                <p className="font-mono text-[10px] text-ink-faint">Push to {AGI_WIN_TARGET} for an instant AGI victory.</p>
               </div>
-              <span className={`font-display text-xl font-black ${textColor}`}>{agi}/6</span>
+              <span className={`font-display text-xl font-black ${textColor}`}>{agi}/{AGI_WIN_TARGET}</span>
             </div>
 
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className={`grid gap-1.5 ${STEPS.length > 7 ? 'grid-cols-8' : 'grid-cols-7'}`}>
               {STEPS.map((step) => (
                 <div
                   key={step}

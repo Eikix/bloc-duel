@@ -157,7 +157,7 @@ pub fn get_card(id: u8) -> CardData {
         },
         9 => CardData {
             id: 9,
-            card_type: CardType::AI,
+            card_type: CardType::Economy,
             age: 1,
             energy_cost: 0,
             materials_cost: 0,

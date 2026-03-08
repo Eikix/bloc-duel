@@ -4,6 +4,7 @@ import { isAvailable, type PyramidNode } from './pyramid'
 
 export const AGI_WIN_TARGET = 7
 export const HERO_SURCHARGE_STEP = 3
+export const POINTS_SYSTEM_MULTIPLIER = 2
 
 export interface ProductionState {
   energy: number
@@ -22,6 +23,10 @@ export interface PlayedCardsState {
 
 export interface HeroState {
   heroCount: number
+}
+
+export interface SystemState {
+  systems: string[]
 }
 
 export function canAfford(
@@ -77,6 +82,13 @@ export function getAvailableDraftNodes(pyramid: PyramidNode[]): PyramidNode[] {
 
 export function getHeroSurcharge(player: HeroState): number {
   return player.heroCount * HERO_SURCHARGE_STEP
+}
+
+export function getProjectedPoints(
+  player: HeroState & SystemState,
+  agiValue: number,
+): number {
+  return agiValue + (new Set(player.systems).size * POINTS_SYSTEM_MULTIPLIER) + player.heroCount
 }
 
 export function canAffordHero(

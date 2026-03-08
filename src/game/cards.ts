@@ -115,7 +115,7 @@ export const AGE_1_CARDS: Card[] = [
   {
     id: 9,
     name: 'Research Cluster',
-    type: 'AI',
+    type: 'ECONOMY',
     age: 1,
     cost: { compute: 1 },
     effect: { computePerTurn: 1 },

@@ -10,6 +10,7 @@ import SystemBonusChoice from '../components/SystemBonusChoice'
 import { useBlocDuelLifecycle } from '../hooks/useBlocDuel'
 import type { Card as GameCard } from '../game/cards'
 import { RESOURCE_ICONS } from '../game/format'
+import { AGI_WIN_TARGET, getHeroSurcharge, getProjectedPoints } from '../game/rules'
 import { ALL_SYSTEM_TYPES } from '../game/systems'
 import {
   isZeroAddress,
@@ -45,7 +46,7 @@ const TURN_FLOW = [
 ] as const
 
 const WIN_PATHS = [
-  'AGI to 6',
+  `AGI to ${AGI_WIN_TARGET}`,
   'Escalation to your edge',
   'All 4 system types',
   'Most points after Age III',
@@ -108,7 +109,7 @@ function countDistinctSystems(player: Pick<GamePlayer, 'systems'>): number {
 }
 
 function getPointsProjection(player: GamePlayer, agiValue: number): number {
-  return agiValue + countDistinctSystems(player) + player.heroCount
+  return getProjectedPoints(player, agiValue)
 }
 
 function getEscalationPressure(playerIndex: 0 | 1, escalation: number): number {
@@ -183,7 +184,7 @@ function CommanderHudCard({
         </div>
         <div className="hud-resource-cell hud-resource-cell-compact">
           <span className="hud-resource-label">{HUD_GLYPHS.agi} AGI</span>
-          <span className="hud-resource-value">{agi}/6</span>
+          <span className="hud-resource-value">{agi}/{AGI_WIN_TARGET}</span>
         </div>
         <div className="hud-resource-cell hud-resource-cell-compact">
           <span className="hud-resource-label">{HUD_GLYPHS.systems} Sys</span>
@@ -425,7 +426,7 @@ export function Game({ onBackHome }: GameProps) {
           : 'Create or join a game. The draft begins as soon as both commanders are seated.'
 
   const localPlayer = localPlayerIndex !== null ? players[localPlayerIndex] : null
-  const localHeroSurcharge = localPlayer?.heroCount ? localPlayer.heroCount * 2 : 0
+  const localHeroSurcharge = localPlayer ? getHeroSurcharge(localPlayer) : 0
   const canInvokeHero = localPlayer !== null
     && isCurrentUserTurn
     && phase === 'DRAFTING'
@@ -499,9 +500,9 @@ export function Game({ onBackHome }: GameProps) {
       key: 'agi',
       glyph: HUD_GLYPHS.agi,
       label: 'AGI breakthrough',
-      rule: 'Reach 6 AGI to win immediately.',
-      value: `${hudFocusCommander.agi}/6`,
-      progress: clampHudProgress(hudFocusCommander.agi / 6),
+      rule: `Reach ${AGI_WIN_TARGET} AGI to win immediately.`,
+      value: `${hudFocusCommander.agi}/${AGI_WIN_TARGET}`,
+      progress: clampHudProgress(hudFocusCommander.agi / AGI_WIN_TARGET),
       fillClass: 'hud-victory-fill-agi',
       winType: 'Instant',
       isFinalScoring: false,
