@@ -5,6 +5,7 @@ import CardZoom from '../components/CardZoom'
 import DiscardZone from '../components/DiscardZone'
 import HeroPicker from '../components/HeroPicker'
 import PlayField from '../components/PlayField'
+import StrategicMapBackground from '../components/StrategicMapBackground'
 import SystemBonusChoice from '../components/SystemBonusChoice'
 import { useBlocDuelLifecycle } from '../hooks/useBlocDuel'
 import { RESOURCE_ICONS } from '../game/format'
@@ -440,6 +441,45 @@ export function Game({ onBackHome }: GameProps) {
   const atlanticHud = commanderCards[0]
   const continentalHud = commanderCards[1]
   const hudFocusCommander = commanderCards[hudFocusPlayerIndex]
+  const battleSceneTeams = commanderCards.map((card) => ({
+    active: card.isActive,
+    agi: card.agi,
+    capital: card.player.capital,
+    escalation: card.escalation,
+    faction: card.player.faction,
+    heroCount: card.player.heroCount,
+    projectedPoints: card.projectedPoints,
+    production: card.player.production,
+    systems: card.systems,
+  })) as [{
+    active: boolean
+    agi: number
+    capital: number
+    escalation: number
+    faction: 'ATLANTIC' | 'CONTINENTAL'
+    heroCount: number
+    projectedPoints: number
+    production: {
+      energy: number
+      materials: number
+      compute: number
+    }
+    systems: number
+  }, {
+    active: boolean
+    agi: number
+    capital: number
+    escalation: number
+    faction: 'ATLANTIC' | 'CONTINENTAL'
+    heroCount: number
+    projectedPoints: number
+    production: {
+      energy: number
+      materials: number
+      compute: number
+    }
+    systems: number
+  }]
   const pointsLeader = Math.max(...commanderCards.map((card) => card.projectedPoints), 1)
   const victoryTracks = [
     {
@@ -498,7 +538,18 @@ export function Game({ onBackHome }: GameProps) {
   }, [isBattleView])
 
   return (
-    <div className={`game-shell flex flex-col text-ink ${isBattleView ? 'h-screen overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
+    <div className={`game-shell relative isolate flex flex-col text-ink ${isBattleView ? 'h-screen overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
+      {isBattleView && (
+        <StrategicMapBackground
+          age={age}
+          className="absolute inset-0 -z-10"
+          phase={phase}
+          selectedType={selectedNode?.card.type ?? null}
+          teams={battleSceneTeams}
+          variant="battle"
+          winner={winner}
+        />
+      )}
       {!isBattleView && (
       <header className="game-topbar rounded-[30px] px-4 py-4 md:px-6 md:py-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -992,12 +1043,12 @@ export function Game({ onBackHome }: GameProps) {
                 />
               </aside>
 
-              <section className="table-surface relative min-h-0 overflow-hidden rounded-[34px] px-4 py-4 md:px-6 md:py-5">
+              <section className="table-surface table-surface-battle relative min-h-0 overflow-hidden rounded-[34px] px-4 py-4 md:px-6 md:py-5">
                 <div className="relative z-10 flex h-full min-h-0 flex-col">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="section-label mb-1">{HUD_GLYPHS.board} Operational Theater</p>
-                      <h2 className="font-display text-[2.1rem] font-black leading-none text-ink md:text-[2.5rem]">
+                      <p className="section-label mb-1 text-white/45">{HUD_GLYPHS.board} Operational Theater</p>
+                      <h2 className="font-display text-[2.1rem] font-black leading-none text-white md:text-[2.5rem]">
                         Battle board
                       </h2>
                     </div>
@@ -1023,17 +1074,20 @@ export function Game({ onBackHome }: GameProps) {
                     label="Enemy network"
                     emptyHint="Enemy deployments appear here."
                     compact
+                    immersive
                   />
 
-                  <div className="relative my-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/75 bg-[radial-gradient(circle_at_center,rgba(47,109,246,0.14),rgba(255,255,255,0)_42%),linear-gradient(180deg,rgba(255,255,255,0.74),rgba(228,236,245,0.58))] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
-                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),transparent_35%,rgba(17,32,56,0.04))]" />
-                    <CardPyramid
-                      key={`${selectedGameId ?? 'none'}-${age}`}
-                      dropRefs={dropRefs}
-                      onPlay={(position) => void playCardAt(position)}
-                      onDiscard={(position) => void discardCardAt(position)}
-                      onDragOverZone={setActiveDragZone}
-                    />
+                  <div className="relative my-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_30%,rgba(8,18,34,0.12))]" />
+                    <div className="relative z-10 flex w-full justify-center">
+                      <CardPyramid
+                        key={`${selectedGameId ?? 'none'}-${age}`}
+                        dropRefs={dropRefs}
+                        onPlay={(position) => void playCardAt(position)}
+                        onDiscard={(position) => void discardCardAt(position)}
+                        onDragOverZone={setActiveDragZone}
+                      />
+                    </div>
                   </div>
 
                   <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
@@ -1045,12 +1099,14 @@ export function Game({ onBackHome }: GameProps) {
                       emptyHint="Deploy drafted cards here."
                       targetLabel="Drop to deploy"
                       compact
+                      immersive
                     />
                     <DiscardZone
                       ref={discardRef}
                       sellValue={sellValue}
                       isHighlighted={activeDragZone === 'discard'}
                       compact
+                      immersive
                     />
                   </div>
                 </div>
