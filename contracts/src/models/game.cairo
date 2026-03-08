@@ -32,13 +32,13 @@ pub impl GameImpl of GameTrait {
             return;
         }
         if current_player == 0 {
-            self.agi_one = clamp(self.agi_one + delta, 0, 6);
-            if self.agi_one == 6 {
+            self.agi_one = clamp(self.agi_one + delta, 0, 7);
+            if self.agi_one == 7 {
                 self.end_game(1, WinCondition::AgiBreakthrough);
             }
         } else {
-            self.agi_two = clamp(self.agi_two + delta, 0, 6);
-            if self.agi_two == 6 {
+            self.agi_two = clamp(self.agi_two + delta, 0, 7);
+            if self.agi_two == 7 {
                 self.end_game(2, WinCondition::AgiBreakthrough);
             }
         }

@@ -159,7 +159,7 @@ export const AGE_2_CARDS: Card[] = [
     type: 'MILITARY',
     age: 2,
     cost: { energy: 2, materials: 1 },
-    effect: { escalation: 2 },
+    effect: { escalation: 1 },
     chainTo: 23,
     chainFrom: 3,
   },
@@ -255,7 +255,7 @@ export const AGE_3_CARDS: Card[] = [
     type: 'MILITARY',
     age: 3,
     cost: { energy: 4, materials: 2 },
-    effect: { escalation: 4 },
+    effect: { escalation: 3 },
     chainFrom: 13,
   },
   {
@@ -292,7 +292,7 @@ export const AGE_3_CARDS: Card[] = [
     type: 'MILITARY',
     age: 3,
     cost: { energy: 3, materials: 3 },
-    effect: { escalation: 3, capital: 2 },
+    effect: { escalation: 2, capital: 2 },
   },
   {
     id: 28,

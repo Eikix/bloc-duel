@@ -205,7 +205,8 @@ pub impl PlayerStateImpl of PlayerStateTrait {
     }
 
     fn score(self: @PlayerState, agi: u8) -> u16 {
-        agi.into() + self.unique_systems().into() + (*self.hero_count).into()
+        let systems: u16 = self.unique_systems().into();
+        agi.into() + systems + systems + (*self.hero_count).into()
     }
 }
 

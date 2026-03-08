@@ -34,7 +34,7 @@
   "contracts": [
     {
       "address": "0x24cce672c8cbd91774ec94eec345bfaad6fa8729a787f359a2ffc112ad24e19",
-      "class_hash": "0x1eb034a78e830a498762ba01bcd72af1cae62bc50398cc8a746b63cb07b9588",
+      "class_hash": "0x3a7f369aff4c99e43ada70271ac937a8f7e3ec67c0d5fcc602692876d27c45c",
       "init_calldata": [],
       "tag": "bloc_duel-actions",
       "selector": "0x481a9e32cee213c255ce0d2c9a488441f2488d9a1ad9cecd70c335d5cd98c2f",

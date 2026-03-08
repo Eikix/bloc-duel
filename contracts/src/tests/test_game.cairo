@@ -179,7 +179,7 @@ mod tests {
 
         let mut game: Game = world.read_model(game_id);
         game.current_player = 0;
-        game.agi_one = 5;
+        game.agi_one = 6;
         world.write_model_test(@game);
 
         let mut pyramid: Pyramid = world.read_model(game_id);
@@ -233,6 +233,7 @@ mod tests {
 
         let mut game: Game = world.read_model(game_id);
         game.current_player = 0;
+        game.age = 3;
         world.write_model_test(@game);
 
         let mut pyramid: Pyramid = world.read_model(game_id);
@@ -254,6 +255,38 @@ mod tests {
         assert(game_after.phase == GamePhase::GameOver, 'game over');
         assert(game_after.winner == 1, 'p1 wins');
         assert(game_after.win_condition == WinCondition::SystemsDominance, 'sys win');
+    }
+
+    #[test]
+    fn test_systems_do_not_win_before_age_three() {
+        let (mut world, dispatcher, game_id, player1, _) = setup_game();
+
+        let mut game: Game = world.read_model(game_id);
+        game.current_player = 0;
+        game.age = 2;
+        world.write_model_test(@game);
+
+        let mut pyramid: Pyramid = world.read_model(game_id);
+        pyramid.slot_6 = 5;
+        pyramid.taken_mask = 0;
+        world.write_model_test(@pyramid);
+
+        let mut p0: PlayerState = world.read_model((game_id, 0_u8));
+        p0.compute_count = 1;
+        p0.finance_count = 1;
+        p0.cyber_count = 1;
+        p0.diplomacy_count = 0;
+        world.write_model_test(@p0);
+
+        set_contract_address(player1);
+        dispatcher.play_card(game_id, 6);
+
+        let game_after: Game = world.read_model(game_id);
+        let p0_after: PlayerState = world.read_model((game_id, 0_u8));
+        assert(game_after.phase == GamePhase::Drafting, 'still drafting');
+        assert(game_after.winner == 0, 'no winner');
+        assert(game_after.win_condition == WinCondition::None, 'no systems win');
+        assert(p0_after.diplomacy_count == 1, 'fourth system kept');
     }
 
     #[test]
@@ -546,7 +579,7 @@ mod tests {
 
         let mut game: Game = world.read_model(game_id);
         game.current_player = 1;
-        game.agi_two = 5;
+        game.agi_two = 6;
         world.write_model_test(@game);
 
         let mut pyramid: Pyramid = world.read_model(game_id);
@@ -699,7 +732,7 @@ mod tests {
 
         let p0_after: PlayerState = world.read_model((game_id, 0_u8));
         assert(p0_after.hero_count == 3, 'hero count');
-        assert(p0_after.capital == 11, 'surcharge net');
+        assert(p0_after.capital == 9, 'surcharge net');
     }
 
     #[test]

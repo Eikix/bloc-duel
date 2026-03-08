@@ -34,8 +34,8 @@ export const HEROES: Hero[] = [
     name: 'J.R. Oppen',
     title: 'Destroyer of Worlds',
     cost: { energy: 3, materials: 2 },
-    effect: { escalation: 3 },
-    description: 'Escalation +3',
+    effect: { escalation: 2 },
+    description: 'Escalation +2',
   },
   {
     id: 2,
@@ -98,8 +98,8 @@ export const HEROES: Hero[] = [
     name: 'Grace Halper',
     title: 'The Admiral',
     cost: { energy: 2 },
-    effect: { escalation: 2, energyPerTurn: 1 },
-    description: 'Escalation +2, +1 Energy/turn',
+    effect: { escalation: 1, energyPerTurn: 1 },
+    description: 'Escalation +1, +1 Energy/turn',
   },
 ]
 

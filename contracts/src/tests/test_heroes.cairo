@@ -27,7 +27,7 @@ mod tests {
         assert(hero.materials_cost == 0, 'materials cost');
         assert(hero.compute_cost == 0, 'compute cost');
         assert(hero.agi == 0, 'no agi');
-        assert(hero.escalation == 2, 'escalation 2');
+        assert(hero.escalation == 1, 'escalation 1');
         assert(hero.capital == 0, 'no capital');
         assert(hero.energy_per_turn == 1, 'energy prod 1');
         assert(hero.materials_per_turn == 0, 'no mats prod');
