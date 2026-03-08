@@ -434,6 +434,10 @@ export function Game({ onBackHome }: GameProps) {
     && phase === 'DRAFTING'
     && availableHeroes.length > 0
     && availableHeroes.some((hero) => canAfford(localPlayer, hero.cost, localHeroSurcharge))
+  const canOpenHeroPicker = localPlayer !== null
+    && isCurrentUserTurn
+    && phase === 'DRAFTING'
+    && availableHeroes.length > 0
   const hudFocusPlayer = localPlayer ?? players[bottomPlayer]
   const hudFocusPlayerIndex: 0 | 1 = localPlayerIndex ?? bottomPlayer
 
@@ -1119,6 +1123,30 @@ export function Game({ onBackHome }: GameProps) {
 
               <section className="table-surface table-surface-battle relative min-h-0 overflow-visible rounded-[34px] px-3 py-3 md:overflow-hidden md:px-6 md:py-5">
                 <div className="relative z-10 flex h-full min-h-0 flex-col">
+                  {canOpenHeroPicker && (
+                    <button
+                      onClick={toggleHeroPicker}
+                      className={`mb-3 flex items-center justify-between gap-3 rounded-[24px] border px-4 py-3 text-left shadow-[0_18px_32px_rgba(245,158,11,0.16)] transition hover:-translate-y-0.5 ${
+                        canInvokeHero
+                          ? 'border-amber-300/80 bg-[linear-gradient(135deg,rgba(255,244,204,0.96),rgba(255,221,131,0.92))] text-amber-950'
+                          : 'border-amber-200/60 bg-[linear-gradient(135deg,rgba(255,249,231,0.92),rgba(246,234,187,0.88))] text-amber-900'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="section-label text-amber-700/80">Alternative turn action</p>
+                        <p className="mt-1 font-display text-xl font-black leading-none">Invoke Hero instead of drafting</p>
+                        <p className="mt-1 font-mono text-[11px] text-amber-800/80">
+                          {availableHeroes.length} of 3 hero option{availableHeroes.length === 1 ? '' : 's'} remain
+                          {localHeroSurcharge > 0 ? ` • surcharge +${localHeroSurcharge}` : ''}
+                          {canInvokeHero ? '' : ' • inspect the hero market'}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-white/70 bg-white/62 px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
+                        {canInvokeHero ? 'Open heroes' : 'View heroes'}
+                      </span>
+                    </button>
+                  )}
+
                   <PlayField
                     playerIndex={topPlayer}
                     label="Enemy network"
