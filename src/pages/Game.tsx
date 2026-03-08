@@ -5,6 +5,7 @@ import CardZoom from '../components/CardZoom'
 import DiscardZone from '../components/DiscardZone'
 import HeroPicker from '../components/HeroPicker'
 import PlayField from '../components/PlayField'
+import StrategicMapBackground from '../components/StrategicMapBackground'
 import SystemBonusChoice from '../components/SystemBonusChoice'
 import { useBlocDuelLifecycle } from '../hooks/useBlocDuel'
 import { RESOURCE_ICONS } from '../game/format'
@@ -440,39 +441,103 @@ export function Game({ onBackHome }: GameProps) {
   const atlanticHud = commanderCards[0]
   const continentalHud = commanderCards[1]
   const hudFocusCommander = commanderCards[hudFocusPlayerIndex]
+  const hudFocusRivalCommander = commanderCards[hudFocusPlayerIndex === 0 ? 1 : 0]
+  const battleSceneTeams = commanderCards.map((card) => ({
+    active: card.isActive,
+    agi: card.agi,
+    capital: card.player.capital,
+    escalation: card.escalation,
+    faction: card.player.faction,
+    heroCount: card.player.heroCount,
+    projectedPoints: card.projectedPoints,
+    production: card.player.production,
+    systems: card.systems,
+  })) as [{
+    active: boolean
+    agi: number
+    capital: number
+    escalation: number
+    faction: 'ATLANTIC' | 'CONTINENTAL'
+    heroCount: number
+    projectedPoints: number
+    production: {
+      energy: number
+      materials: number
+      compute: number
+    }
+    systems: number
+  }, {
+    active: boolean
+    agi: number
+    capital: number
+    escalation: number
+    faction: 'ATLANTIC' | 'CONTINENTAL'
+    heroCount: number
+    projectedPoints: number
+    production: {
+      energy: number
+      materials: number
+      compute: number
+    }
+    systems: number
+  }]
   const pointsLeader = Math.max(...commanderCards.map((card) => card.projectedPoints), 1)
+  const pointsDelta = hudFocusCommander.projectedPoints - hudFocusRivalCommander.projectedPoints
+  const pointsStatus = pointsDelta > 0
+    ? `Leading by ${pointsDelta}`
+    : pointsDelta < 0
+      ? `Behind by ${Math.abs(pointsDelta)}`
+      : 'Tied right now'
   const victoryTracks = [
     {
       key: 'agi',
       glyph: HUD_GLYPHS.agi,
-      label: 'AGI',
+      label: 'AGI breakthrough',
+      rule: 'Reach 6 AGI to win immediately.',
       value: `${hudFocusCommander.agi}/6`,
       progress: clampHudProgress(hudFocusCommander.agi / 6),
       fillClass: 'hud-victory-fill-agi',
+      winType: 'Instant',
+      isFinalScoring: false,
     },
     {
       key: 'esc',
       glyph: HUD_GLYPHS.escalation,
-      label: 'ESC',
+      label: 'Escalation edge',
+      rule: 'Push escalation to your end of the track.',
       value: `${hudFocusCommander.escalation}/6`,
       progress: clampHudProgress(hudFocusCommander.escalation / 6),
       fillClass: 'hud-victory-fill-esc',
+      winType: 'Instant',
+      isFinalScoring: false,
     },
     {
       key: 'sys',
       glyph: HUD_GLYPHS.systems,
-      label: 'SYS',
+      label: 'System set',
+      rule: 'Collect all 4 system types.',
       value: `${hudFocusCommander.systems}/${ALL_SYSTEM_TYPES.length}`,
       progress: clampHudProgress(hudFocusCommander.systems / ALL_SYSTEM_TYPES.length),
       fillClass: 'hud-victory-fill-sys',
+      winType: 'Instant',
+      isFinalScoring: false,
     },
     {
       key: 'pts',
       glyph: HUD_GLYPHS.points,
-      label: 'PTS',
-      value: `${hudFocusCommander.projectedPoints}`,
+      label: 'Points lead',
+      rule: 'Only decides the match after Age III ends.',
+      value: `${hudFocusCommander.projectedPoints} pts`,
       progress: clampHudProgress(hudFocusCommander.projectedPoints / pointsLeader),
       fillClass: 'hud-victory-fill-pts',
+      winType: 'Final',
+      isFinalScoring: true,
+      status: pointsStatus,
+      statusClass: pointsDelta > 0
+        ? 'hud-victory-score-chip-lead'
+        : pointsDelta < 0
+          ? 'hud-victory-score-chip-trail'
+          : 'hud-victory-score-chip-tied',
     },
   ] as const
 
@@ -498,7 +563,18 @@ export function Game({ onBackHome }: GameProps) {
   }, [isBattleView])
 
   return (
-    <div className={`game-shell flex flex-col text-ink ${isBattleView ? 'h-screen overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
+    <div className={`game-shell relative isolate flex flex-col text-ink ${isBattleView ? 'h-screen overflow-hidden' : 'min-h-screen gap-4 pb-6'}`}>
+      {isBattleView && (
+        <StrategicMapBackground
+          age={age}
+          className="absolute inset-0 -z-10"
+          phase={phase}
+          selectedType={selectedNode?.card.type ?? null}
+          teams={battleSceneTeams}
+          variant="battle"
+          winner={winner}
+        />
+      )}
       {!isBattleView && (
       <header className="game-topbar rounded-[30px] px-4 py-4 md:px-6 md:py-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -845,9 +921,9 @@ export function Game({ onBackHome }: GameProps) {
           )}
 
           <div className="flex h-full w-full flex-col gap-3 overflow-hidden">
-            <section className="hud-compact-bar rounded-[24px] px-3 py-2.5 md:px-4 md:py-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
+            <section className="hud-compact-bar rounded-[20px] px-2.5 py-1.5 md:px-3 md:py-1.5">
+              <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   {(onBackHome || selectedGameId !== null) && (
                     <button
                       onClick={() => {
@@ -861,7 +937,7 @@ export function Game({ onBackHome }: GameProps) {
                   )}
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-2">
+                <div className="scrollbar-hidden flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto whitespace-nowrap">
                   <span className="hud-status-pill">{PHASE_LABELS[phase]}</span>
                   <span className="hud-status-pill">Age {AGE_LABELS[age]}</span>
                   <span className={`hud-status-pill ${currentTurnIsLocalWallet ? 'hud-status-pill-live' : ''}`}>
@@ -869,9 +945,30 @@ export function Game({ onBackHome }: GameProps) {
                   </span>
                   <span className="hud-status-pill">Sell +{sellValue}</span>
                   <span className="hud-status-pill">Win: {winner === null ? 'Live' : WIN_CONDITION_LABELS[winCondition]}</span>
+                  <span className="hud-top-divider" />
+                  <div className="hud-top-stat">
+                    <span className="hud-top-stat-label">{HUD_GLYPHS.capital} Capital</span>
+                    <span className="hud-top-stat-value">{hudFocusPlayer.capital}</span>
+                  </div>
+                  <div className="hud-top-stat">
+                    <span className="hud-top-stat-label">{RESOURCE_ICONS.energy} Energy</span>
+                    <span className="hud-top-stat-value">{hudFocusPlayer.production.energy}</span>
+                  </div>
+                  <div className="hud-top-stat">
+                    <span className="hud-top-stat-label">{RESOURCE_ICONS.materials} Materials</span>
+                    <span className="hud-top-stat-value">{hudFocusPlayer.production.materials}</span>
+                  </div>
+                  <div className="hud-top-stat">
+                    <span className="hud-top-stat-label">{RESOURCE_ICONS.compute} Compute</span>
+                    <span className="hud-top-stat-value">{hudFocusPlayer.production.compute}</span>
+                  </div>
+                  <div className="hud-top-stat">
+                    <span className="hud-top-stat-label">{HUD_GLYPHS.selection} Selected</span>
+                    <span className="hud-top-stat-value hud-top-stat-value-card">{selectedNode ? selectedNode.card.type : 'None'}</span>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   {walletMode === 'burner' ? (
                     <>
                       <span className="hud-inline-chip text-white/80">
@@ -914,52 +1011,44 @@ export function Game({ onBackHome }: GameProps) {
                   )}
                 </div>
               </div>
-
-              <div className="mt-2 grid gap-2 sm:grid-cols-5">
-                  <div className="hud-resource-cell hud-resource-cell-slim">
-                    <span className="hud-resource-label">{HUD_GLYPHS.capital} Capital</span>
-                    <span className="hud-resource-value">{hudFocusPlayer.capital}</span>
-                  </div>
-                  <div className="hud-resource-cell hud-resource-cell-slim">
-                    <span className="hud-resource-label">{RESOURCE_ICONS.energy} Energy</span>
-                    <span className="hud-resource-value">{hudFocusPlayer.production.energy}</span>
-                  </div>
-                  <div className="hud-resource-cell hud-resource-cell-slim">
-                    <span className="hud-resource-label">{RESOURCE_ICONS.materials} Materials</span>
-                    <span className="hud-resource-value">{hudFocusPlayer.production.materials}</span>
-                  </div>
-                  <div className="hud-resource-cell hud-resource-cell-slim">
-                    <span className="hud-resource-label">{RESOURCE_ICONS.compute} Compute</span>
-                    <span className="hud-resource-value">{hudFocusPlayer.production.compute}</span>
-                  </div>
-                  <div className="hud-resource-cell hud-resource-cell-slim">
-                    <span className="hud-resource-label">{HUD_GLYPHS.selection} Card</span>
-                    <span className="hud-resource-value text-base">{selectedNode ? selectedNode.card.type : 'None'}</span>
-                  </div>
-              </div>
             </section>
 
-            <div className="min-h-0 grid flex-1 gap-3 xl:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="min-h-0 grid flex-1 gap-3 xl:grid-cols-[288px_minmax(0,1fr)]">
               <aside className="hidden min-h-0 xl:flex xl:flex-col xl:gap-3">
                 <div className="hud-panel rounded-[26px] p-3">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <p className="section-label text-white/50">{HUD_GLYPHS.points} Victory tracks</p>
+                    <p className="section-label text-white/50">{HUD_GLYPHS.points} How to win</p>
                     <span className="hud-inline-chip text-[10px] text-white/68">
-                      {hudFocusCommander.isLocal ? 'Your pace' : 'Board pace'}
+                      {hudFocusCommander.isLocal ? 'Your commander' : 'Enemy commander'}
                     </span>
                   </div>
-                  <div className="hud-victory-rail">
+                  <div className="hud-victory-guide">
                     {victoryTracks.map((track) => (
-                      <div key={track.key} className="hud-victory-bar">
-                        <span className="hud-victory-glyph">{track.glyph}</span>
-                        <div className="hud-victory-meter">
-                          <div
-                            className={`hud-victory-fill ${track.fillClass}`}
-                            style={{ height: `${track.progress * 100}%` }}
-                          />
+                      <div key={track.key} className="hud-victory-row">
+                        <span className="hud-victory-glyph hud-victory-glyph-row">{track.glyph}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="hud-victory-title">{track.label}</span>
+                            <span className="hud-victory-kind">{track.winType}</span>
+                          </div>
+                          <p className="hud-victory-rule">{track.rule}</p>
+                          {track.isFinalScoring ? (
+                            <div className="hud-victory-progress hud-victory-progress-final">
+                              <span className="hud-victory-value">{track.value}</span>
+                              <span className={`hud-victory-score-chip ${track.statusClass}`}>{track.status}</span>
+                            </div>
+                          ) : (
+                            <div className="hud-victory-progress">
+                              <div className="hud-victory-progress-track">
+                                <div
+                                  className={`hud-victory-fill ${track.fillClass}`}
+                                  style={{ width: `${track.progress * 100}%` }}
+                                />
+                              </div>
+                              <span className="hud-victory-value">{track.value}</span>
+                            </div>
+                          )}
                         </div>
-                        <span className="hud-victory-label">{track.label}</span>
-                        <span className="hud-victory-value">{track.value}</span>
                       </div>
                     ))}
                   </div>
@@ -992,12 +1081,12 @@ export function Game({ onBackHome }: GameProps) {
                 />
               </aside>
 
-              <section className="table-surface relative min-h-0 overflow-hidden rounded-[34px] px-4 py-4 md:px-6 md:py-5">
+              <section className="table-surface table-surface-battle relative min-h-0 overflow-hidden rounded-[34px] px-4 py-4 md:px-6 md:py-5">
                 <div className="relative z-10 flex h-full min-h-0 flex-col">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="section-label mb-1">{HUD_GLYPHS.board} Operational Theater</p>
-                      <h2 className="font-display text-[2.1rem] font-black leading-none text-ink md:text-[2.5rem]">
+                      <p className="section-label mb-1 text-white/45">{HUD_GLYPHS.board} Operational Theater</p>
+                      <h2 className="font-display text-[1.45rem] font-black leading-none text-white md:text-[1.8rem]">
                         Battle board
                       </h2>
                     </div>
@@ -1023,17 +1112,20 @@ export function Game({ onBackHome }: GameProps) {
                     label="Enemy network"
                     emptyHint="Enemy deployments appear here."
                     compact
+                    immersive
                   />
 
-                  <div className="relative my-3 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/75 bg-[radial-gradient(circle_at_center,rgba(47,109,246,0.14),rgba(255,255,255,0)_42%),linear-gradient(180deg,rgba(255,255,255,0.74),rgba(228,236,245,0.58))] px-2 py-3 md:px-4 md:py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)]">
-                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),transparent_35%,rgba(17,32,56,0.04))]" />
-                    <CardPyramid
-                      key={`${selectedGameId ?? 'none'}-${age}`}
-                      dropRefs={dropRefs}
-                      onPlay={(position) => void playCardAt(position)}
-                      onDiscard={(position) => void discardCardAt(position)}
-                      onDragOverZone={setActiveDragZone}
-                    />
+                  <div className="relative my-4 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[30px] border border-white/16 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),rgba(8,18,34,0.04)_36%,rgba(8,18,34,0.16)_100%)] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]">
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_30%,rgba(8,18,34,0.12))]" />
+                    <div className="relative z-10 flex w-full justify-center">
+                      <CardPyramid
+                        key={`${selectedGameId ?? 'none'}-${age}`}
+                        dropRefs={dropRefs}
+                        onPlay={(position) => void playCardAt(position)}
+                        onDiscard={(position) => void discardCardAt(position)}
+                        onDragOverZone={setActiveDragZone}
+                      />
+                    </div>
                   </div>
 
                   <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
@@ -1045,12 +1137,14 @@ export function Game({ onBackHome }: GameProps) {
                       emptyHint="Deploy drafted cards here."
                       targetLabel="Drop to deploy"
                       compact
+                      immersive
                     />
                     <DiscardZone
                       ref={discardRef}
                       sellValue={sellValue}
                       isHighlighted={activeDragZone === 'discard'}
                       compact
+                      immersive
                     />
                   </div>
                 </div>
