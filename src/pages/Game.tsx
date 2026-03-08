@@ -1009,6 +1009,14 @@ export function Game({ onBackHome }: GameProps) {
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
+                  {canOpenHeroPicker && (
+                    <button
+                      onClick={toggleHeroPicker}
+                      className={`hud-utility-btn ${canInvokeHero ? '' : 'opacity-80'}`}
+                    >
+                      Heroes
+                    </button>
+                  )}
                   {walletMode === 'burner' ? (
                     <>
                       <span className="hud-inline-chip text-white/80">
@@ -1054,7 +1062,7 @@ export function Game({ onBackHome }: GameProps) {
             </section>
 
             <div className="min-h-0 grid flex-1 gap-3 xl:grid-cols-[288px_minmax(0,1fr)]">
-              <aside className="hidden min-h-0 xl:flex xl:flex-col xl:gap-3">
+              <aside className="hidden min-h-0 xl:flex xl:flex-col xl:gap-3 xl:overflow-y-auto xl:pr-1">
                 <div className="hud-panel rounded-[26px] p-3">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <p className="section-label text-white/50">{HUD_GLYPHS.points} How to win</p>
