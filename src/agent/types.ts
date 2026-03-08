@@ -1,5 +1,6 @@
 import type { AccountInterface } from 'starknet'
 import type { BlocDuelConfigOverride } from '../dojo/config'
+import type { BlocDuelSessionPolicies } from '../dojo/policies'
 import type { GameSnapshot, GameSummary } from '../dojo/torii'
 import type { SystemSymbol } from '../game/systems'
 
@@ -26,6 +27,7 @@ export interface AgentPolicy {
 export type AgentSignerConfig =
   | { mode: 'katana-burner'; burnerIndex?: number; address?: string }
   | { mode: 'private-key'; address: string; privateKey: string }
+  | { mode: 'controller-session'; basePath?: string; keychainUrl?: string; policies?: BlocDuelSessionPolicies }
   | { mode: 'session-key'; account: AccountInterface; address?: string }
 
 export interface AgentClientOptions extends BlocDuelConfigOverride {

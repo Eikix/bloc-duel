@@ -43,6 +43,7 @@ interface RuntimeState {
   address: string | null
   config: BlocDuelConfig
   policy: AgentPolicy | null
+  dojoProvider: Awaited<ReturnType<typeof createBlocDuelRuntime>>['dojoProvider']
   rpcProvider: RpcProvider
   world: BlocDuelWorld
   toriiClient: Awaited<ReturnType<typeof createBlocDuelRuntime>>['toriiClient']
@@ -114,6 +115,10 @@ function getActorIndex(snapshot: GameSnapshot, actorAddress: string): 0 | 1 | nu
 function getOpponentAddress(snapshot: GameSnapshot, actorIndex: 0 | 1 | null): string | null {
   if (actorIndex === null) return null
   return snapshot.players[actorIndex === 0 ? 1 : 0].address
+}
+
+function getLocalExecutionDetails(state: RuntimeState) {
+  return state.config.network === 'katana' ? { tip: 0n } : {}
 }
 
 function estimateCapitalCost(snapshot: GameSnapshot, actorIndex: 0 | 1, action: AgentAction): number {
@@ -248,20 +253,51 @@ async function submitWorldAction(
   action: Exclude<AgentAction, { kind: 'create_game' }>,
 ) {
   const { account } = requireSigner(state)
+  const details = getLocalExecutionDetails(state)
 
   switch (action.kind) {
     case 'join_game':
-      return state.world.actions.joinGame(account, action.gameId)
+      return state.dojoProvider.execute(
+        account,
+        state.world.actions.buildJoinGameCalldata(action.gameId),
+        state.config.namespace,
+        details,
+      )
     case 'play_card':
-      return state.world.actions.playCard(account, action.gameId, action.position)
+      return state.dojoProvider.execute(
+        account,
+        state.world.actions.buildPlayCardCalldata(action.gameId, action.position),
+        state.config.namespace,
+        details,
+      )
     case 'discard_card':
-      return state.world.actions.discardCard(account, action.gameId, action.position)
+      return state.dojoProvider.execute(
+        account,
+        state.world.actions.buildDiscardCardCalldata(action.gameId, action.position),
+        state.config.namespace,
+        details,
+      )
     case 'invoke_hero':
-      return state.world.actions.invokeHero(account, action.gameId, action.slot)
+      return state.dojoProvider.execute(
+        account,
+        state.world.actions.buildInvokeHeroCalldata(action.gameId, action.slot),
+        state.config.namespace,
+        details,
+      )
     case 'choose_system_bonus':
-      return state.world.actions.chooseSystemBonus(account, action.gameId, toCairoSystemSymbol(action.symbol))
+      return state.dojoProvider.execute(
+        account,
+        state.world.actions.buildChooseSystemBonusCalldata(action.gameId, toCairoSystemSymbol(action.symbol)),
+        state.config.namespace,
+        details,
+      )
     case 'next_age':
-      return state.world.actions.nextAge(account, action.gameId)
+      return state.dojoProvider.execute(
+        account,
+        state.world.actions.buildNextAgeCalldata(action.gameId),
+        state.config.namespace,
+        details,
+      )
   }
 }
 
@@ -313,7 +349,12 @@ class BlocDuelAgentClient implements BlocDuelAgent {
       await sleep(this.state.policy.cooldownMs)
     }
 
-    const result = await this.state.world.actions.createGame(account)
+    const result = await this.state.dojoProvider.execute(
+      account,
+      this.state.world.actions.buildCreateGameCalldata(),
+      this.state.config.namespace,
+      getLocalExecutionDetails(this.state),
+    )
     await waitForTransaction(this.state.rpcProvider, result.transaction_hash)
 
     const attempts = this.state.policy?.waitForIndexingAttempts ?? 40
@@ -586,13 +627,14 @@ export function getExplorerUrl(txHash: string | null): string | null {
 export async function createAgentClient(options: AgentClientOptions = {}): Promise<BlocDuelAgent> {
   const config = resolveDojoConfig(options)
   const runtime = await createBlocDuelRuntime(config)
-  const signer = options.signer ? await resolveAgentSigner(config.rpcUrl, options.signer) : null
+  const signer = options.signer ? await resolveAgentSigner(config, options.signer) : null
 
   return new BlocDuelAgentClient({
     account: signer?.account ?? null,
     address: signer?.address ?? null,
     config,
     policy: options.policy ?? null,
+    dojoProvider: runtime.dojoProvider,
     rpcProvider: runtime.dojoProvider.provider,
     toriiClient: runtime.toriiClient,
     world: runtime.world,

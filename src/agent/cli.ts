@@ -28,6 +28,8 @@ interface CliOptions {
   burnerIndex?: number
   burnerA?: number
   burnerB?: number
+  sessionBasePath?: string
+  sessionKeychainUrl?: string
   accountAddress?: string
   privateKey?: string
   strategy?: string
@@ -110,6 +112,14 @@ function parseOptions(args: string[]) {
         options.burnerB = parseNumber(value, 'burner-b')
         index += 1
         break
+      case '--session-base-path':
+        options.sessionBasePath = value
+        index += 1
+        break
+      case '--session-keychain-url':
+        options.sessionKeychainUrl = value
+        index += 1
+        break
       case '--account-address':
         options.accountAddress = value
         index += 1
@@ -171,8 +181,9 @@ function resolveSigner(options: CliOptions, mutating: boolean): AgentSignerConfi
   const signerMode = options.signerMode ?? pickEnv(process.env.BLOCDUEL_AGENT_SIGNER_MODE) as AgentSignerConfig['mode'] | undefined
   const address = options.accountAddress ?? pickEnv(process.env.BLOCDUEL_AGENT_ACCOUNT_ADDRESS)
   const privateKey = options.privateKey ?? pickEnv(process.env.BLOCDUEL_AGENT_PRIVATE_KEY)
+  const defaultMode = signerMode ?? (isLocalTarget(options) ? 'katana-burner' : undefined)
 
-  if (!mutating && !signerMode && !address && !privateKey) {
+  if (!mutating && !signerMode && !address && !privateKey && defaultMode !== 'katana-burner') {
     return undefined
   }
 
@@ -180,7 +191,7 @@ function resolveSigner(options: CliOptions, mutating: boolean): AgentSignerConfi
     return { mode: 'private-key', address, privateKey }
   }
 
-  if ((signerMode ?? (isLocalTarget(options) ? 'katana-burner' : undefined)) === 'katana-burner') {
+  if (defaultMode === 'katana-burner') {
     return {
       mode: 'katana-burner',
       burnerIndex: options.burnerIndex ?? Number(process.env.BLOCDUEL_AGENT_BURNER_INDEX ?? 0),
@@ -194,11 +205,19 @@ function resolveSigner(options: CliOptions, mutating: boolean): AgentSignerConfi
     return { mode: 'private-key', address, privateKey }
   }
 
+  if (signerMode === 'controller-session') {
+    return {
+      mode: 'controller-session',
+      basePath: options.sessionBasePath ?? pickEnv(process.env.BLOCDUEL_AGENT_SESSION_BASE_PATH),
+      keychainUrl: options.sessionKeychainUrl ?? pickEnv(process.env.BLOCDUEL_AGENT_SESSION_KEYCHAIN_URL),
+    }
+  }
+
   if (!mutating) {
     return undefined
   }
 
-  fail('Mutating commands require a signer. Use local Katana, or pass --signer-mode private-key with credentials.')
+  fail('Mutating commands require a signer. Use local Katana, --signer-mode controller-session, or --signer-mode private-key with credentials.')
 }
 
 function buildClientOptions(options: CliOptions, mutating: boolean): AgentClientOptions {
@@ -264,6 +283,11 @@ function usage() {
     '  match play <id> [--strategy balanced] [--max-actions 200] [--json]',
     '  match selfplay [--strategy-a balanced] [--strategy-b balanced] [--burner-a 0] [--burner-b 1] [--json]',
     '  match watch <id> [--interval-ms 1000] [--json]',
+    '',
+    'Signer modes:',
+    '  local default -> katana-burner',
+    '  public networks -> --signer-mode controller-session [--session-base-path .cartridge]',
+    '  fallback -> --signer-mode private-key --account-address <addr> --private-key <pk>',
     '',
     `Strategies: ${agentStrategyNames.join(', ')}`,
   ].join('\n')

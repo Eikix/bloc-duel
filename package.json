@@ -21,6 +21,7 @@
     "agent:play": "npm run agent:local -- match play",
     "agent:watch": "npm run agent:local -- match watch",
     "agent:selfplay": "npm run agent:local -- match selfplay --json",
+    "agent:validate": "npm run agent:build --silent && node scripts/validate-agent-sdk.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
