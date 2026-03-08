@@ -13,6 +13,7 @@ import type {
   PlayerView,
   WinCondition,
 } from '../dojo/torii'
+import { useTransactionStore } from './transactionStore'
 
 export type Faction = 'ATLANTIC' | 'CONTINENTAL'
 export type Player = PlayerView
@@ -106,16 +107,50 @@ async function waitForTransaction(rpcProvider: RpcProvider, transactionHash: str
   }
 }
 
-async function runMutation(
+interface MutationCopy {
+  title: string
+  pending: string
+  submitted?: string
+  success: string
+}
+
+interface MutationResult {
+  skipped?: boolean
+  successDescription?: string
+  txHash?: string
+}
+
+type SubmittedNotifier = (txHash: string, description?: string) => void
+
+async function runMutationWithToast(
   set: (partial: Partial<GameState>) => void,
-  task: () => Promise<void>,
+  copy: MutationCopy,
+  task: (notifySubmitted: SubmittedNotifier) => Promise<MutationResult | void>,
 ) {
+  const notifications = useTransactionStore.getState()
+  const notificationId = notifications.push(copy.title, copy.pending)
+
   set({ isSubmitting: true, error: null })
 
   try {
-    await task()
+    const result = await task((txHash, description) => {
+      notifications.markSubmitted(notificationId, txHash, description ?? copy.submitted)
+    })
+
+    if (result?.skipped) {
+      notifications.dismiss(notificationId)
+      return
+    }
+
+    notifications.markSuccess(
+      notificationId,
+      result?.successDescription ?? copy.success,
+      result?.txHash,
+    )
   } catch (error) {
-    set({ error: extractErrorMessage(error) })
+    const message = extractErrorMessage(error)
+    notifications.markError(notificationId, message)
+    set({ error: message })
   } finally {
     set({ isSubmitting: false })
   }
@@ -284,29 +319,47 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   createGame: async () => {
-    await runMutation(set, async () => {
+    await runMutationWithToast(set, {
+      title: 'Create game',
+      pending: 'Submitting create_game to the world...',
+      submitted: 'Transaction submitted. Waiting for the new lobby to index...',
+      success: 'Game created.',
+    }, async (notifySubmitted) => {
       const state = get()
       const runtime = requireRuntime(state)
       const knownGameIds = new Set(state.games.map((game) => game.gameId))
       const result = await runtime.world.actions.createGame(runtime.account)
+      notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       await runtime.refreshGames()
       const createdGameId = await runtime.discoverCreatedGame(knownGameIds)
       if (createdGameId !== null) {
         get().setSelectedGameId(createdGameId)
+        return {
+          successDescription: `Game #${createdGameId} created.`,
+          txHash: result.transaction_hash,
+        }
       }
+      return { txHash: result.transaction_hash }
     })
   },
 
   joinGame: async (gameId) => {
-    await runMutation(set, async () => {
+    await runMutationWithToast(set, {
+      title: 'Join game',
+      pending: `Submitting join_game for #${gameId}...`,
+      submitted: 'Transaction submitted. Waiting for the match to start...',
+      success: `Joined game #${gameId}.`,
+    }, async (notifySubmitted) => {
       const state = get()
       const runtime = requireRuntime(state)
       const result = await runtime.world.actions.joinGame(runtime.account, gameId)
+      notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       get().setSelectedGameId(gameId)
       await runtime.refreshGames()
       await runtime.refreshGame(gameId)
+      return { txHash: result.transaction_hash }
     })
   },
 
@@ -331,49 +384,70 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   playCardAt: async (position) => {
-    await runMutation(set, async () => {
+    await runMutationWithToast(set, {
+      title: 'Play card',
+      pending: 'Submitting play_card...',
+      submitted: 'Transaction submitted. Waiting for board state...',
+      success: 'Card deployed.',
+    }, async (notifySubmitted) => {
       const state = get()
       const runtime = requireRuntime(state)
       const gameId = requireSelectedGameId(state)
-      if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return
-      if (!getDraftNode(state.pyramid, position)) return
+      if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
+      if (!getDraftNode(state.pyramid, position)) return { skipped: true }
 
       const result = await runtime.world.actions.playCard(runtime.account, gameId, position)
+      notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       set({ selectedCard: null })
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
+      return { txHash: result.transaction_hash }
     })
   },
 
   discardCardAt: async (position) => {
-    await runMutation(set, async () => {
+    await runMutationWithToast(set, {
+      title: 'Discard card',
+      pending: 'Submitting discard_card...',
+      submitted: 'Transaction submitted. Waiting for board state...',
+      success: 'Card sold for capital.',
+    }, async (notifySubmitted) => {
       const state = get()
       const runtime = requireRuntime(state)
       const gameId = requireSelectedGameId(state)
-      if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return
-      if (!getDraftNode(state.pyramid, position)) return
+      if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
+      if (!getDraftNode(state.pyramid, position)) return { skipped: true }
 
       const result = await runtime.world.actions.discardCard(runtime.account, gameId, position)
+      notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       set({ selectedCard: null })
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
+      return { txHash: result.transaction_hash }
     })
   },
 
   invokeHero: async (heroSlot) => {
-    await runMutation(set, async () => {
+    await runMutationWithToast(set, {
+      title: 'Invoke hero',
+      pending: 'Submitting invoke_hero...',
+      submitted: 'Transaction submitted. Waiting for hero resolution...',
+      success: 'Hero invoked.',
+    }, async (notifySubmitted) => {
       const state = get()
       const runtime = requireRuntime(state)
       const gameId = requireSelectedGameId(state)
-      if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return
+      if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
 
       const result = await runtime.world.actions.invokeHero(runtime.account, gameId, heroSlot)
+      notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       set({ heroPickerOpen: false, selectedCard: null })
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
+      return { txHash: result.transaction_hash }
     })
   },
 
@@ -384,11 +458,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   chooseSystemBonus: async (symbol) => {
-    await runMutation(set, async () => {
+    await runMutationWithToast(set, {
+      title: 'Choose system bonus',
+      pending: 'Submitting choose_system_bonus...',
+      submitted: 'Transaction submitted. Waiting for bonus resolution...',
+      success: 'System bonus selected.',
+    }, async (notifySubmitted) => {
       const state = get()
       const runtime = requireRuntime(state)
       const gameId = requireSelectedGameId(state)
-      if (!state.systemBonusChoice || !state.isCurrentUserTurn) return
+      if (!state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
 
       const result = await runtime.world.actions.chooseSystemBonus(
         runtime.account,
@@ -396,23 +475,32 @@ export const useGameStore = create<GameState>((set, get) => ({
         toCairoSystemSymbol(symbol),
       )
 
+      notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
+      return { txHash: result.transaction_hash }
     })
   },
 
   nextAge: async () => {
-    await runMutation(set, async () => {
+    await runMutationWithToast(set, {
+      title: 'Advance age',
+      pending: 'Submitting next_age...',
+      submitted: 'Transaction submitted. Waiting for the next age...',
+      success: 'Advanced to the next age.',
+    }, async (notifySubmitted) => {
       const state = get()
       const runtime = requireRuntime(state)
       const gameId = requireSelectedGameId(state)
-      if (state.phase !== 'AGE_TRANSITION') return
+      if (state.phase !== 'AGE_TRANSITION') return { skipped: true }
 
       const result = await runtime.world.actions.nextAge(runtime.account, gameId)
+      notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       await runtime.refreshGame(gameId)
       await runtime.refreshGames()
+      return { txHash: result.transaction_hash }
     })
   },
 }))

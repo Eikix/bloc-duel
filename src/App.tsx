@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { TransactionToaster } from './components/TransactionToaster'
 import { Game } from './pages/Game'
 import { Home } from './pages/Home'
 
@@ -35,10 +36,20 @@ function App() {
   }, [screen])
 
   if (screen === 'home') {
-    return <Home onPlayNow={() => setScreen('game')} />
+    return (
+      <>
+        <Home onPlayNow={() => setScreen('game')} />
+        <TransactionToaster />
+      </>
+    )
   }
 
-  return <Game onBackHome={() => setScreen('home')} />
+  return (
+    <>
+      <Game onBackHome={() => setScreen('home')} />
+      <TransactionToaster />
+    </>
+  )
 }
 
 export default App

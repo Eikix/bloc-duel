@@ -60,6 +60,17 @@ function inferNetwork(rpcUrlHint: string | undefined, toriiUrl: string): Starkne
   return 'mainnet'
 }
 
+function normalizeWalletMode(value: string | undefined): WalletMode | undefined {
+  switch (value?.trim().toLowerCase()) {
+    case 'burner':
+      return 'burner'
+    case 'controller':
+      return 'controller'
+    default:
+      return undefined
+  }
+}
+
 function buildDojoConfig() {
   const toriiUrl = trimTrailingSlash(
     pickEnv(
@@ -78,7 +89,12 @@ function buildDojoConfig() {
 
   const network = inferNetwork(rpcUrlHint, toriiUrl)
   const rpcUrl = pickEnv(rpcUrlHint, DEFAULT_RPC_URLS[network])!
-  const walletMode: WalletMode = network === 'katana' ? 'burner' : 'controller'
+  const walletMode = normalizeWalletMode(
+    pickEnv(
+      import.meta.env.VITE_PUBLIC_WALLET_MODE,
+      import.meta.env.PUBLIC_WALLET_MODE,
+    ),
+  ) ?? 'controller'
 
   const worldAddress = pickEnv(
     import.meta.env.VITE_PUBLIC_WORLD_ADDRESS,
@@ -153,4 +169,15 @@ export const MODEL_TAGS = {
 
 export function getNamespacedModelTag(tag: (typeof MODEL_TAGS)[keyof typeof MODEL_TAGS]): string {
   return `${getDojoConfig().namespace}-${tag}`
+}
+
+export function getTransactionExplorerUrl(transactionHash: string): string | null {
+  switch (getDojoConfig().network) {
+    case 'mainnet':
+      return `https://voyager.online/tx/${transactionHash}`
+    case 'sepolia':
+      return `https://sepolia.voyager.online/tx/${transactionHash}`
+    case 'katana':
+      return null
+  }
 }

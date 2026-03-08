@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useAccount, useConnect, useDisconnect } from '@starknet-react/core'
+import { useRef, useState } from 'react'
 import AGITrack from '../components/AGITrack'
 import ActionDock from '../components/ActionDock'
 import CardPyramid from '../components/CardPyramid'
@@ -11,22 +10,14 @@ import HeroPicker from '../components/HeroPicker'
 import PlayField from '../components/PlayField'
 import PlayerStatsBar from '../components/PlayerStatsBar'
 import SystemBonusChoice from '../components/SystemBonusChoice'
-import { resolveKatanaAccount } from '../dojo/burner'
-import { createBlocDuelRuntime, type BlocDuelRuntime } from '../dojo/client'
-import { getDojoConfig } from '../dojo/config'
-import { useBurnerWallet } from '../providers/burnerWallet'
+import { useBlocDuelLifecycle } from '../hooks/useBlocDuel'
 import {
-  fetchGameSnapshot,
-  fetchGameSummaries,
   isZeroAddress,
   normalizeAddress,
   shortAddress,
-  subscribeToGame,
-  subscribeToGames,
   type GamePhase,
   type GameSummary,
   type WinCondition,
-  waitForCreatedGame,
 } from '../dojo/torii'
 import { canAfford, getEffectiveCost, getSellValue, useGameStore } from '../store/gameStore'
 
@@ -45,25 +36,6 @@ const WIN_CONDITION_LABELS: Record<WinCondition, string> = {
   EscalationDominance: 'Escalation Dominance',
   SystemsDominance: 'Systems Dominance',
   Points: 'Points Victory',
-}
-
-function getInitialGameId(): number | null {
-  if (typeof window === 'undefined') return null
-
-  const value = new URLSearchParams(window.location.search).get('game')
-  if (!value) return null
-
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
-}
-
-function syncGameIdToUrl(gameId: number | null) {
-  if (typeof window === 'undefined') return
-
-  const url = new URL(window.location.href)
-  if (gameId === null) url.searchParams.delete('game')
-  else url.searchParams.set('game', String(gameId))
-  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
 }
 
 function getWinnerLabel(
@@ -99,15 +71,25 @@ interface GameProps {
 }
 
 export function Game({ onBackHome }: GameProps) {
-  const [runtime, setRuntimeState] = useState<BlocDuelRuntime | null>(null)
-  const [isBootstrappingRuntime, setIsBootstrappingRuntime] = useState(true)
-  const { walletMode } = getDojoConfig()
-  const { burnerAddresses, burnerIndex, switchBurner } = useBurnerWallet()
-  const { account, address, isConnected } = useAccount()
-  const { connect, connectors, isPending } = useConnect()
-  const { disconnect, isPending: isDisconnecting } = useDisconnect()
   const [joinGameId, setJoinGameId] = useState('')
-  const initialSelectionApplied = useRef(false)
+  const {
+    address,
+    burnerAddresses,
+    burnerIndex,
+    connect,
+    connectors,
+    disconnect,
+    isBootstrappingRuntime,
+    isConnected,
+    isDisconnecting,
+    isPending,
+    refreshGame,
+    refreshGames,
+    runtimeError,
+    runtimeReady,
+    switchBurner,
+    walletMode,
+  } = useBlocDuelLifecycle()
 
   const {
     games,
@@ -135,215 +117,9 @@ export function Game({ onBackHome }: GameProps) {
     discardCardAt,
     chooseSystemBonus,
     nextAge,
-    setRuntime,
-    setWalletAddress,
     setSelectedGameId,
-    setLoadingGames,
-    setLoadingGame,
-    syncGames,
-    syncSnapshot,
     clearError,
   } = useGameStore()
-
-  const refreshGames = useCallback(async () => {
-    if (!runtime) return
-
-    setLoadingGames(true)
-
-    try {
-      const nextGames = await fetchGameSummaries(runtime.toriiClient)
-      syncGames(nextGames)
-    } finally {
-      setLoadingGames(false)
-    }
-  }, [runtime, setLoadingGames, syncGames])
-
-  const refreshGame = useCallback(async (gameIdOverride?: number | null) => {
-    if (!runtime) return
-
-    const gameId = gameIdOverride ?? selectedGameId
-    if (gameId === null) {
-      syncSnapshot(null)
-      return
-    }
-
-    setLoadingGame(true)
-
-    try {
-      const snapshot = await fetchGameSnapshot(runtime.toriiClient, gameId, address)
-      syncSnapshot(snapshot)
-    } finally {
-      setLoadingGame(false)
-    }
-  }, [address, runtime, selectedGameId, setLoadingGame, syncSnapshot])
-
-  const discoverCreatedGame = useCallback(
-    async (knownGameIds: Set<number>) => {
-      if (!runtime) return null
-      return waitForCreatedGame(runtime.toriiClient, knownGameIds, address ?? '0x0')
-    },
-    [address, runtime],
-  )
-
-  useEffect(() => {
-    let mounted = true
-    let currentRuntime: BlocDuelRuntime | null = null
-
-    void (async () => {
-      try {
-        const nextRuntime = await createBlocDuelRuntime()
-        if (!mounted) {
-          nextRuntime.toriiClient.free()
-          return
-        }
-
-        currentRuntime = nextRuntime
-        setRuntimeState(nextRuntime)
-      } finally {
-        if (mounted) {
-          setIsBootstrappingRuntime(false)
-        }
-      }
-    })().catch((error) => {
-      console.error('Failed to initialize Dojo runtime', error)
-    })
-
-    return () => {
-      mounted = false
-      currentRuntime?.toriiClient.free()
-    }
-  }, [])
-
-  useEffect(() => {
-    if (initialSelectionApplied.current) return
-    initialSelectionApplied.current = true
-
-    const initialGameId = getInitialGameId()
-    if (initialGameId !== null) {
-      setSelectedGameId(initialGameId)
-    }
-  }, [setSelectedGameId])
-
-  useEffect(() => {
-    syncGameIdToUrl(selectedGameId)
-  }, [selectedGameId])
-
-  useEffect(() => {
-    let mounted = true
-
-    setWalletAddress(address ?? null)
-
-    if (!runtime) {
-      setRuntime(null)
-      return () => {
-        mounted = false
-      }
-    }
-
-    if (walletMode === 'burner') {
-      if (!address) {
-        setRuntime(null)
-        return () => {
-          mounted = false
-        }
-      }
-
-      void (async () => {
-        try {
-          const burnerAccount = await resolveKatanaAccount(runtime.config.rpcUrl, address)
-          if (!mounted) return
-
-          setRuntime({
-            account: burnerAccount,
-            rpcProvider: runtime.dojoProvider.provider,
-            world: runtime.world,
-            refreshGames,
-            refreshGame,
-            discoverCreatedGame,
-          })
-        } catch (error) {
-          if (!mounted) return
-          console.error('Failed to resolve Katana burner account', error)
-          setRuntime(null)
-        }
-      })()
-
-      return () => {
-        mounted = false
-      }
-    }
-
-    if (!account) {
-      setRuntime(null)
-      return () => {
-        mounted = false
-      }
-    }
-
-    setRuntime({
-      account,
-      rpcProvider: runtime.dojoProvider.provider,
-      world: runtime.world,
-      refreshGames,
-      refreshGame,
-      discoverCreatedGame,
-    })
-
-    return () => {
-      mounted = false
-    }
-  }, [account, address, discoverCreatedGame, refreshGame, refreshGames, runtime, setRuntime, setWalletAddress, walletMode])
-
-  useEffect(() => {
-    if (!runtime) return
-
-    void refreshGames()
-
-    let subscriptionCancelled = false
-    let subscription: Awaited<ReturnType<typeof subscribeToGames>> | undefined
-
-    void (async () => {
-      subscription = await subscribeToGames(runtime.toriiClient, () => {
-        if (!subscriptionCancelled) {
-          void refreshGames()
-        }
-      })
-    })()
-
-    return () => {
-      subscriptionCancelled = true
-      subscription?.cancel()
-    }
-  }, [refreshGames, runtime])
-
-  useEffect(() => {
-    if (!runtime) return
-
-    if (selectedGameId === null) {
-      syncSnapshot(null)
-      return
-    }
-
-    syncSnapshot(null)
-    void refreshGame(selectedGameId)
-
-    let subscriptionCancelled = false
-    let subscription: Awaited<ReturnType<typeof subscribeToGame>> | undefined
-
-    void (async () => {
-      subscription = await subscribeToGame(runtime.toriiClient, selectedGameId, () => {
-        if (!subscriptionCancelled) {
-          void refreshGame(selectedGameId)
-        }
-      })
-    })()
-
-    return () => {
-      subscriptionCancelled = true
-      subscription?.cancel()
-    }
-  }, [refreshGame, runtime, selectedGameId, syncSnapshot])
-
   const bottomPlayer = localPlayerIndex ?? currentPlayer
   const topPlayer: 0 | 1 = bottomPlayer === 0 ? 1 : 0
 
@@ -365,7 +141,6 @@ export function Game({ onBackHome }: GameProps) {
   const myGames = games.filter((game) => isMyGame(game, address ?? null))
   const openLobbies = games.filter((game) => isZeroAddress(game.playerTwo))
   const selectedSummary = games.find((game) => game.gameId === selectedGameId) ?? null
-  const runtimeReady = runtime !== null
   const controllerConnector = walletMode === 'controller' ? connectors[0] ?? null : null
   const currentTurnIsLocalWallet = address !== undefined
     && normalizeAddress(address) === normalizeAddress(currentPlayerAddress)
@@ -532,6 +307,12 @@ export function Game({ onBackHome }: GameProps) {
       {error && (
         <div className="mx-3 rounded-2xl border border-red-200/80 bg-red-50/90 px-4 py-2 font-mono text-xs text-red-700 shadow-[0_10px_30px_rgba(239,68,68,0.1)] md:px-6">
           {error}
+        </div>
+      )}
+
+      {runtimeError && (
+        <div className="mx-3 rounded-2xl border border-amber-200/80 bg-amber-50/90 px-4 py-2 font-mono text-xs text-amber-700 shadow-[0_10px_30px_rgba(245,158,11,0.12)] md:px-6">
+          {runtimeError}
         </div>
       )}
 
