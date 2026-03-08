@@ -6,7 +6,7 @@ A two-player strategy card game set in a near-future geopolitical conflict. Draf
 
 Requires [Nix](https://nixos.org/) with flakes enabled. The dev environment provides all tools (Node.js, Katana, Torii, Sozo, Scarb).
 
-On macOS, local Katana/Torii/Sozo now run through Docker Desktop because the current Nix Cairo toolchain is Linux-only.
+The same Nix entrypoints work on Linux and macOS through native `cairo-nix` packages.
 
 ### Mode 1: Local Dev (Katana + Torii + Vite)
 
@@ -23,8 +23,6 @@ What it does:
 - Installs npm deps if needed
 - Starts Vite dev server (port 5173)
 - Uses local Katana burner accounts instead of Cartridge Controller
-
-On macOS this mode requires Docker Desktop running. The Dojo services use `ghcr.io/dojoengine/dojo:v1.8.0` under `linux/amd64`.
 
 **When to use:** Day-to-day local development. No mainnet costs, fast iteration.
 

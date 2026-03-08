@@ -9,7 +9,7 @@
     system,
     ...
   }: let
-    common = import ./common/config.nix {inherit inputs pkgs system;};
+    common = import ./common/config.nix {inherit inputs system;};
   in {
     process-compose.start-mainnet-torii = {
       imports = [

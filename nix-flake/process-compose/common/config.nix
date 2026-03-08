@@ -1,7 +1,6 @@
 {
   inputs,
   system,
-  pkgs ? null,
   ...
 }: let
   # Read ports from environment variables (requires --impure flag)
@@ -25,24 +24,6 @@ in {
   # System utilities
   isLinux = system == "x86_64-linux";
   isDarwin = builtins.match ".*-darwin" system != null;
-  useDockerDojo = builtins.match ".*-darwin" system != null;
   supportsLocalContracts = system == "x86_64-linux" || builtins.match ".*-darwin" system != null;
-  dojoDockerImage = "ghcr.io/dojoengine/dojo:v1.8.0";
-  dojoDockerPlatform = "linux/amd64";
-  dojoDockerNetwork = "bloc-duel-local";
   cairoPkgs = inputs.cairo-nix.packages.${system};
-  macosSozo =
-    if pkgs == null || !(builtins.match ".*-darwin" system != null)
-    then null
-    else
-      pkgs.runCommand "sozo-v1.8.0-linux-amd64" {} ''
-        mkdir -p "$out/bin"
-        tar -xzf ${
-          pkgs.fetchurl {
-            url = "https://github.com/dojoengine/dojo/releases/download/v1.8.0/dojo_v1.8.0_linux_amd64.tar.gz";
-            hash = "sha256-UQCVzHGQXJuv50wdt8299atiW3JCYwENaB8PNxrtp9I=";
-          }
-        } -C "$out/bin"
-        chmod +x "$out/bin/sozo"
-      '';
 }
