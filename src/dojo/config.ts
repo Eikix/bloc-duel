@@ -1,4 +1,5 @@
 import devManifest from '../../contracts/manifest_dev.json'
+import sepoliaManifest from '../../contracts/manifest_sepolia.json'
 import mainnetManifest from '../../contracts/manifest_mainnet.json'
 
 const ACTIONS_TAG = 'bloc_duel-actions'
@@ -12,7 +13,7 @@ type EnvBag = Record<string, string | undefined>
 
 const MANIFESTS = {
   dev: devManifest,
-  sepolia: devManifest,
+  sepolia: sepoliaManifest,
   mainnet: mainnetManifest,
 } as const
 
