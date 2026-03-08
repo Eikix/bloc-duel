@@ -111,8 +111,8 @@ export default function Card({
         pressStartRef.current = { x: event.clientX, y: event.clientY }
       }}
       className={`
-        relative h-[6.6rem] w-[4.65rem] overflow-hidden rounded-[22px] border ${style.frame} bg-slate-950
-        flex flex-col select-none transition-shadow duration-150 sm:h-[8.35rem] sm:w-[5.95rem] md:h-[8.85rem] md:w-[6.3rem] lg:h-[9.4rem] lg:w-[6.7rem] xl:h-[10rem] xl:w-[7.1rem] 2xl:h-[10.7rem] 2xl:w-[7.6rem]
+        relative h-[6.1rem] w-[4.3rem] overflow-hidden rounded-[22px] border ${style.frame} bg-slate-950
+        flex flex-col select-none transition-shadow duration-150 sm:h-[7.15rem] sm:w-[5.05rem] md:h-[7.6rem] md:w-[5.35rem] lg:h-[8rem] lg:w-[5.7rem] xl:h-[8.45rem] xl:w-[6rem] 2xl:h-[9.35rem] 2xl:w-[6.65rem]
         ${selected ? 'ring-2 ring-atlantic/70 ring-offset-2 ring-offset-slate-900/75' : ''}
         ${canDrag ? `cursor-grab ${style.glow}` : ''}
         ${isClickable && !canDrag ? `cursor-pointer ${style.glow}` : ''}
