@@ -2,7 +2,19 @@
 
 Last synced: 2026-03-08
 
-A two-player strategy card game set in a near-future geopolitical conflict. Draft cards from a shared pyramid, build your engine, and race to one of three victory conditions.
+A two-player strategy card game set in a near-future geopolitical conflict. Draft cards from a shared pyramid, build your engine, invoke heroes, and race across AGI, escalation, systems, or points.
+
+What gives the game replayability:
+- shared-pyramid draft variance changes every match
+- heroes create swing turns and distinct timing windows
+- multiple win lines force different plans and denial patterns
+
+The game is designed to work across:
+- browser play with Cartridge Controller on Starknet Sepolia
+- local burner-account play on Katana
+- programmatic play through the headless SDK and agent skill
+
+That agent-native layer also makes a plausible future direction obvious: routing autonomous play through a Daydream-style agent system, similar in spirit to Axis from Blitz.
 
 Current public deployment:
 - Frontend: [https://bloc-duel.vercel.app](https://bloc-duel.vercel.app)
@@ -33,9 +45,9 @@ What it does:
 
 **When to use:** Day-to-day local development. No public-network costs, fast iteration.
 
-### Mode 2: Mainnet + Local Torii
+### Mode 2: Public Network + Local Torii
 
-Runs a local Torii instance indexing mainnet contracts. No Katana — reads from real Starknet.
+Runs a local Torii instance indexing deployed contracts on a public Starknet network. No Katana — reads from real Starknet.
 
 ```bash
 nix run .#start-mainnet
@@ -47,11 +59,11 @@ What it does:
 - Installs npm deps if needed
 - Starts Vite dev server (port 5173)
 
-**Prerequisites:** Deploy contracts to mainnet first, set `world_address` and `world_block` in `contracts/dojo_mainnet.toml`.
+**Prerequisites:** Deploy contracts first, set `world_address` and `world_block` in the relevant Dojo config.
 
 **When to use:** Pre-production testing against real on-chain state.
 
-### Mode 3: Mainnet + Remote Torii
+### Mode 3: Public Network + Remote Torii
 
 Frontend only — connects to a remote Torii instance. Nothing local except the dev server.
 
@@ -69,12 +81,12 @@ What it does:
 
 ### Mode Comparison
 
-| | Mode 1 (Local) | Mode 2 (Mainnet-Local) | Mode 3 (Remote Torii) |
+| | Mode 1 (Local) | Mode 2 (Public-Local) | Mode 3 (Remote Torii) |
 |---|---|---|---|
 | **Command** | `nix run .#start` | `nix run .#start-mainnet` | `nix run .#start-mainnet-torii` |
 | **Katana** | Local devnet | -- | -- |
-| **Torii** | Local | Local (indexing mainnet) | Remote |
-| **Blockchain** | Local Katana | Starknet Mainnet | Starknet Mainnet |
+| **Torii** | Local | Local (indexing deployed world) | Remote |
+| **Blockchain** | Local Katana | Starknet public network | Starknet public network |
 | **Best for** | Development | Pre-production | Production |
 
 ### Ports
@@ -113,6 +125,8 @@ The repo also ships a headless agent client for programmatic play. It talks dire
 - submit moves turn by turn
 - self-play locally for validation
 - watch existing matches and continue them
+
+This is not just a test harness. It is a real programmatic interface for agents to play Bloc Duel, which opens the door to agent-vs-agent ladders, automated balance runs, and future router-style integrations.
 
 ### Core API
 
@@ -207,6 +221,16 @@ This covers:
 - repeated self-play across multiple strategy pairings
 
 The local validator is stable on Katana/Torii. Larger balance batches still depend on local chain/indexer throughput, so big self-play runs can take a few minutes.
+
+## Mobile
+
+The live game is meant to remain playable on mobile and compact laptops, even if the desktop battlefield is the most comfortable way to play.
+
+Recent polish includes:
+- mobile-sized draft and deployed cards
+- action modal usability on touch screens
+- compact-laptop access to the hero action
+- reduced load-time motion so the board settles cleanly
 
 ## Balance Lab
 
