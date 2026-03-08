@@ -107,6 +107,25 @@ async function waitForTransaction(rpcProvider: RpcProvider, transactionHash: str
   }
 }
 
+function isActionStateMismatchError(error: unknown): boolean {
+  const message = extractErrorMessage(error).toLowerCase()
+  return message.includes('not drafting')
+    || message.includes('not transition')
+    || message.includes('pending choice')
+    || message.includes('not your turn')
+}
+
+async function resyncGameState(runtime: RuntimeContext, gameId: number, attempts: number = 8) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    await runtime.refreshGame(gameId)
+    await runtime.refreshGames()
+
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 400))
+    }
+  }
+}
+
 interface MutationCopy {
   title: string
   pending: string
@@ -396,7 +415,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
       if (!getDraftNode(state.pyramid, position)) return { skipped: true }
 
-      const result = await runtime.world.actions.playCard(runtime.account, gameId, position)
+      let result: Awaited<ReturnType<typeof runtime.world.actions.playCard>>
+      try {
+        result = await runtime.world.actions.playCard(runtime.account, gameId, position)
+      } catch (error) {
+        if (isActionStateMismatchError(error)) {
+          set({ selectedCard: null, heroPickerOpen: false })
+          await resyncGameState(runtime, gameId)
+          throw new Error('Game state was out of date. Synced the latest board state; try the move again.')
+        }
+        throw error
+      }
+
       notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       set({ selectedCard: null })
@@ -419,7 +449,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
       if (!getDraftNode(state.pyramid, position)) return { skipped: true }
 
-      const result = await runtime.world.actions.discardCard(runtime.account, gameId, position)
+      let result: Awaited<ReturnType<typeof runtime.world.actions.discardCard>>
+      try {
+        result = await runtime.world.actions.discardCard(runtime.account, gameId, position)
+      } catch (error) {
+        if (isActionStateMismatchError(error)) {
+          set({ selectedCard: null, heroPickerOpen: false })
+          await resyncGameState(runtime, gameId)
+          throw new Error('Game state was out of date. Synced the latest board state; try the move again.')
+        }
+        throw error
+      }
+
       notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       set({ selectedCard: null })
@@ -441,7 +482,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       const gameId = requireSelectedGameId(state)
       if (state.phase !== 'DRAFTING' || state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
 
-      const result = await runtime.world.actions.invokeHero(runtime.account, gameId, heroSlot)
+      let result: Awaited<ReturnType<typeof runtime.world.actions.invokeHero>>
+      try {
+        result = await runtime.world.actions.invokeHero(runtime.account, gameId, heroSlot)
+      } catch (error) {
+        if (isActionStateMismatchError(error)) {
+          set({ selectedCard: null, heroPickerOpen: false })
+          await resyncGameState(runtime, gameId)
+          throw new Error('Game state was out of date. Synced the latest board state; try the move again.')
+        }
+        throw error
+      }
+
       notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       set({ heroPickerOpen: false, selectedCard: null })
@@ -469,11 +521,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       const gameId = requireSelectedGameId(state)
       if (!state.systemBonusChoice || !state.isCurrentUserTurn) return { skipped: true }
 
-      const result = await runtime.world.actions.chooseSystemBonus(
-        runtime.account,
-        gameId,
-        toCairoSystemSymbol(symbol),
-      )
+      let result: Awaited<ReturnType<typeof runtime.world.actions.chooseSystemBonus>>
+      try {
+        result = await runtime.world.actions.chooseSystemBonus(
+          runtime.account,
+          gameId,
+          toCairoSystemSymbol(symbol),
+        )
+      } catch (error) {
+        if (isActionStateMismatchError(error)) {
+          set({ selectedCard: null, heroPickerOpen: false })
+          await resyncGameState(runtime, gameId)
+          throw new Error('Game state was out of date. Synced the latest board state; try the move again.')
+        }
+        throw error
+      }
 
       notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
@@ -495,7 +557,18 @@ export const useGameStore = create<GameState>((set, get) => ({
       const gameId = requireSelectedGameId(state)
       if (state.phase !== 'AGE_TRANSITION') return { skipped: true }
 
-      const result = await runtime.world.actions.nextAge(runtime.account, gameId)
+      let result: Awaited<ReturnType<typeof runtime.world.actions.nextAge>>
+      try {
+        result = await runtime.world.actions.nextAge(runtime.account, gameId)
+      } catch (error) {
+        if (isActionStateMismatchError(error)) {
+          set({ selectedCard: null, heroPickerOpen: false })
+          await resyncGameState(runtime, gameId)
+          throw new Error('Game state was out of date. Synced the latest board state; try again.')
+        }
+        throw error
+      }
+
       notifySubmitted(result.transaction_hash)
       await waitForTransaction(runtime.rpcProvider, result.transaction_hash)
       await runtime.refreshGame(gameId)
