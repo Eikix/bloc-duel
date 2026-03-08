@@ -322,7 +322,7 @@ pub fn get_card(id: u8) -> CardData {
             materials_per_turn: 0,
             compute_per_turn: 0,
             capital_per_turn: 0,
-            symbol: SystemType::Finance,
+            symbol: SystemType::None,
             chain_from: 255,
         },
         19 => CardData {

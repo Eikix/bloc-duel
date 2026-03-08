@@ -48,7 +48,7 @@ const TURN_FLOW = [
 const WIN_PATHS = [
   `AGI to ${AGI_WIN_TARGET}`,
   'Escalation to your edge',
-  'All 4 system types',
+  'All 4 distinct system types',
   'Most points after Age III',
 ] as const
 
@@ -531,7 +531,7 @@ export function Game({ onBackHome }: GameProps) {
       key: 'sys',
       glyph: HUD_GLYPHS.systems,
       label: 'System set',
-      rule: 'Collect all 4 system types.',
+      rule: 'Collect all 4 distinct system types.',
       value: `${hudFocusCommander.systems}/${ALL_SYSTEM_TYPES.length}`,
       progress: clampHudProgress(hudFocusCommander.systems / ALL_SYSTEM_TYPES.length),
       fillClass: 'hud-victory-fill-sys',

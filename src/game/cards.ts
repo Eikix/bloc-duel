@@ -208,7 +208,6 @@ export const AGE_2_CARDS: Card[] = [
     age: 2,
     cost: { materials: 2 },
     effect: { capital: 2, escalation: 1 },
-    symbol: 'FINANCE',
   },
   {
     id: 19,

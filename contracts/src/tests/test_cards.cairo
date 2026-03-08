@@ -54,6 +54,23 @@ mod tests {
     }
 
     #[test]
+    fn test_non_system_cards_do_not_grant_system_symbols() {
+        let mut id: u8 = 0;
+        loop {
+            if id == card_count() {
+                break;
+            }
+
+            let card = get_card(id);
+            if card.card_type != CardType::System {
+                assert(card.symbol == SystemType::None, 'non-system symbol');
+            }
+
+            id += 1;
+        }
+    }
+
+    #[test]
     fn test_card_ages_by_id_range() {
         let mut id: u8 = 0;
         loop {
