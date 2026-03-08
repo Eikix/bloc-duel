@@ -314,6 +314,33 @@ mod tests {
     }
 
     #[test]
+    fn test_age_transition_with_partial_hero_refresh() {
+        let (mut world, dispatcher, game_id, player1, _) = setup_game();
+
+        let mut game: Game = world.read_model(game_id);
+        game.current_player = 0;
+        game.phase = GamePhase::AgeTransition;
+        game.age = 2;
+        world.write_model_test(@game);
+
+        let mut heroes: HeroPool = world.read_model(game_id);
+        heroes.used_mask = 0x1FF;
+        world.write_model_test(@heroes);
+
+        set_contract_address(player1);
+        dispatcher.next_age(game_id);
+
+        let game_after: Game = world.read_model(game_id);
+        let heroes_after: HeroPool = world.read_model(game_id);
+        assert(game_after.age == 3, 'age three');
+        assert(game_after.phase == GamePhase::Drafting, 'back drafting');
+        assert(heroes_after.hero_0_taken == false, 'remaining hero open');
+        assert(heroes_after.hero_1_taken == true, 'empty slot one hidden');
+        assert(heroes_after.hero_2_taken == true, 'empty slot two hidden');
+        assert(heroes_after.hero_0 == 9, 'last hero selected');
+    }
+
+    #[test]
     #[should_panic]
     fn test_cannot_play_covered_card() {
         let (_, dispatcher, game_id, player1, _) = setup_game();

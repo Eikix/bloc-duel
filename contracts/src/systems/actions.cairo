@@ -128,16 +128,7 @@ pub mod actions {
             let (hero_ids, used_mask) = select_n(
                 poseidon_hash_span(array![game.seed, 999].span()), hero_count(), 3, 0,
             );
-            let hero_pool = HeroPool {
-                game_id,
-                hero_0: *hero_ids.at(0),
-                hero_1: *hero_ids.at(1),
-                hero_2: *hero_ids.at(2),
-                hero_0_taken: false,
-                hero_1_taken: false,
-                hero_2_taken: false,
-                used_mask,
-            };
+            let hero_pool = hero_pool_from_selection(game_id, @hero_ids, used_mask);
 
             let pending = PendingChoiceTrait::new(game_id);
 
@@ -328,13 +319,7 @@ pub mod actions {
                 3,
                 hero_pool.used_mask,
             );
-            hero_pool.hero_0 = *hero_ids.at(0);
-            hero_pool.hero_1 = *hero_ids.at(1);
-            hero_pool.hero_2 = *hero_ids.at(2);
-            hero_pool.hero_0_taken = false;
-            hero_pool.hero_1_taken = false;
-            hero_pool.hero_2_taken = false;
-            hero_pool.used_mask = new_mask;
+            hero_pool = hero_pool_from_selection(game_id, @hero_ids, new_mask);
 
             world.write_model(@game);
             world.write_model(@pyramid);
@@ -518,5 +503,19 @@ pub mod actions {
         }
 
         shuffle_with_seed(seed, cards)
+    }
+
+    fn hero_pool_from_selection(game_id: u32, hero_ids: @Array<u8>, used_mask: u16) -> HeroPool {
+        let hero_count = hero_ids.len();
+        HeroPool {
+            game_id,
+            hero_0: if hero_count > 0 { *hero_ids.at(0) } else { 0 },
+            hero_1: if hero_count > 1 { *hero_ids.at(1) } else { 0 },
+            hero_2: if hero_count > 2 { *hero_ids.at(2) } else { 0 },
+            hero_0_taken: hero_count == 0,
+            hero_1_taken: hero_count <= 1,
+            hero_2_taken: hero_count <= 2,
+            used_mask,
+        }
     }
 }
