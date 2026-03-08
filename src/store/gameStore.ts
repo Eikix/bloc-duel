@@ -1,9 +1,9 @@
 import { create } from 'zustand'
 import { CairoCustomEnum } from 'starknet'
 import type { AccountInterface, RpcProvider } from 'starknet'
-import type { Card, ResourceCost } from '../game/cards'
 import type { SystemSymbol } from '../game/systems'
-import { isAvailable, type PyramidNode } from '../game/pyramid'
+import type { PyramidNode } from '../game/pyramid'
+import { getDraftNode } from '../game/rules'
 import type { BlocDuelWorld } from '../dojo/client'
 import type {
   AvailableHero,
@@ -201,34 +201,7 @@ function toCairoSystemSymbol(symbol: SystemSymbol): CairoCustomEnum {
   })
 }
 
-function getDraftNode(pyramid: PyramidNode[], position: number): { index: number; node: PyramidNode } | null {
-  const index = pyramid.findIndex((node) => node.position === position)
-  if (index === -1) return null
-
-  const node = pyramid[index]
-  if (node.taken || !isAvailable(position, pyramid)) return null
-
-  return { index, node }
-}
-
-export function canAfford(
-  player: Pick<Player, 'capital' | 'production'>,
-  cost: ResourceCost,
-  extraCapital: number = 0,
-): boolean {
-  const energyNeeded = Math.max(0, (cost.energy ?? 0) - player.production.energy)
-  const materialsNeeded = Math.max(0, (cost.materials ?? 0) - player.production.materials)
-  const computeNeeded = Math.max(0, (cost.compute ?? 0) - player.production.compute)
-  return player.capital >= energyNeeded + materialsNeeded + computeNeeded + extraCapital
-}
-
-export function getEffectiveCost(card: Card): ResourceCost {
-  return card.cost
-}
-
-export function getSellValue(age: 1 | 2 | 3): number {
-  return age
-}
+export { canAfford, getEffectiveCost, getSellValue } from '../game/rules'
 
 export const useGameStore = create<GameState>((set, get) => ({
   games: [],

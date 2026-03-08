@@ -5,7 +5,7 @@ import { getHeroById } from '../game/heroes'
 import type { Hero } from '../game/heroes'
 import { type SystemSymbol } from '../game/systems'
 import { buildPyramid, type PyramidNode } from '../game/pyramid'
-import { getDojoConfig, getNamespacedModelTag, MODEL_TAGS } from './config'
+import { getDojoConfig, MODEL_TAGS, resolveNamespacedModelTag } from './config'
 
 export type Faction = 'ATLANTIC' | 'CONTINENTAL'
 export type GamePhase = 'LOBBY' | 'DRAFTING' | 'AGE_TRANSITION' | 'GAME_OVER'
@@ -357,17 +357,24 @@ function basePagination(limit: number): Query['pagination'] {
   }
 }
 
-function gamesClause(): Clause {
+function gamesClause(namespace: string = getDojoConfig().namespace): Clause {
   return {
     Keys: {
       keys: [],
       pattern_matching: 'VariableLen',
-      models: [getNamespacedModelTag(MODEL_TAGS.game)],
+      models: [getModelTag(MODEL_TAGS.game, namespace)],
     },
   }
 }
 
-function selectedGameClause(gameId: number): Clause {
+function getModelTag(
+  tag: (typeof MODEL_TAGS)[keyof typeof MODEL_TAGS],
+  namespace: string = getDojoConfig().namespace,
+) {
+  return resolveNamespacedModelTag(tag, namespace)
+}
+
+function selectedGameClause(gameId: number, namespace: string = getDojoConfig().namespace): Clause {
   const tags = [
     MODEL_TAGS.game,
     MODEL_TAGS.playerState,
@@ -383,20 +390,23 @@ function selectedGameClause(gameId: number): Clause {
         Keys: {
           keys: [String(gameId)],
           pattern_matching: 'VariableLen',
-          models: [getNamespacedModelTag(tag)],
+          models: [getModelTag(tag, namespace)],
         },
       })),
     },
   }
 }
 
-export async function fetchGameSummaries(toriiClient: ToriiClient): Promise<GameSummary[]> {
-  const { worldAddress } = getDojoConfig()
-  const gameTag = getNamespacedModelTag(MODEL_TAGS.game)
+export async function fetchGameSummaries(
+  toriiClient: ToriiClient,
+  worldAddress: string = getDojoConfig().worldAddress,
+  namespace: string = getDojoConfig().namespace,
+): Promise<GameSummary[]> {
+  const gameTag = getModelTag(MODEL_TAGS.game, namespace)
   const response = await toriiClient.getEntities({
     world_addresses: [worldAddress],
     models: [gameTag],
-    clause: gamesClause(),
+    clause: gamesClause(namespace),
     no_hashed_keys: false,
     historical: false,
     pagination: basePagination(200),
@@ -424,30 +434,31 @@ export async function fetchGameSnapshot(
   toriiClient: ToriiClient,
   gameId: number,
   walletAddress?: string,
+  worldAddress: string = getDojoConfig().worldAddress,
+  namespace: string = getDojoConfig().namespace,
 ): Promise<GameSnapshot | null> {
-  const { worldAddress } = getDojoConfig()
   const response = await toriiClient.getEntities({
     world_addresses: [worldAddress],
     models: [
-      getNamespacedModelTag(MODEL_TAGS.game),
-      getNamespacedModelTag(MODEL_TAGS.playerState),
-      getNamespacedModelTag(MODEL_TAGS.pyramid),
-      getNamespacedModelTag(MODEL_TAGS.heroPool),
-      getNamespacedModelTag(MODEL_TAGS.pendingChoice),
+      getModelTag(MODEL_TAGS.game, namespace),
+      getModelTag(MODEL_TAGS.playerState, namespace),
+      getModelTag(MODEL_TAGS.pyramid, namespace),
+      getModelTag(MODEL_TAGS.heroPool, namespace),
+      getModelTag(MODEL_TAGS.pendingChoice, namespace),
     ],
-    clause: selectedGameClause(gameId),
+    clause: selectedGameClause(gameId, namespace),
     no_hashed_keys: false,
     historical: false,
     pagination: basePagination(50),
   })
 
-  const game = collectModels<RawGameModel>(response.items, getNamespacedModelTag(MODEL_TAGS.game))[0]
+  const game = collectModels<RawGameModel>(response.items, getModelTag(MODEL_TAGS.game, namespace))[0]
   if (!game) return null
 
-  const playerStates = collectModels<RawPlayerStateModel>(response.items, getNamespacedModelTag(MODEL_TAGS.playerState))
-  const pyramid = collectModels<RawPyramidModel>(response.items, getNamespacedModelTag(MODEL_TAGS.pyramid))[0]
-  const heroPool = collectModels<RawHeroPoolModel>(response.items, getNamespacedModelTag(MODEL_TAGS.heroPool))[0]
-  const pendingChoice = collectModels<RawPendingChoiceModel>(response.items, getNamespacedModelTag(MODEL_TAGS.pendingChoice))[0]
+  const playerStates = collectModels<RawPlayerStateModel>(response.items, getModelTag(MODEL_TAGS.playerState, namespace))
+  const pyramid = collectModels<RawPyramidModel>(response.items, getModelTag(MODEL_TAGS.pyramid, namespace))[0]
+  const heroPool = collectModels<RawHeroPoolModel>(response.items, getModelTag(MODEL_TAGS.heroPool, namespace))[0]
+  const pendingChoice = collectModels<RawPendingChoiceModel>(response.items, getModelTag(MODEL_TAGS.pendingChoice, namespace))[0]
 
   const p0State = playerStates.find((state) => toNumber(state.player_index) === 0)
   const p1State = playerStates.find((state) => toNumber(state.player_index) === 1)
@@ -482,18 +493,20 @@ export async function waitForCreatedGame(
   knownGameIds: Set<number>,
   walletAddress: string,
   attempts: number = 20,
+  worldAddress: string = getDojoConfig().worldAddress,
+  namespace: string = getDojoConfig().namespace,
 ): Promise<number | null> {
   const normalizedWallet = normalizeAddress(walletAddress)
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const games = await fetchGameSummaries(toriiClient)
+    const games = await fetchGameSummaries(toriiClient, worldAddress, namespace)
     const created = games.find(
       (game) => !knownGameIds.has(game.gameId) && normalizeAddress(game.playerOne) === normalizedWallet,
     )
 
     if (created) return created.gameId
 
-    await new Promise((resolve) => window.setTimeout(resolve, 500))
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 500))
   }
 
   return null
@@ -502,16 +515,24 @@ export async function waitForCreatedGame(
 export async function subscribeToGames(
   toriiClient: ToriiClient,
   onUpdate: () => void | Promise<void>,
+  worldAddress: string = getDojoConfig().worldAddress,
+  namespace: string = getDojoConfig().namespace,
 ): Promise<Subscription> {
-  const { worldAddress } = getDojoConfig()
-  return toriiClient.onEntityUpdated(gamesClause(), [worldAddress], onUpdate)
+  return toriiClient.onEntityUpdated({
+    Keys: {
+      keys: [],
+      pattern_matching: 'VariableLen',
+      models: [getModelTag(MODEL_TAGS.game, namespace)],
+    },
+  }, [worldAddress], onUpdate)
 }
 
 export async function subscribeToGame(
   toriiClient: ToriiClient,
   gameId: number,
   onUpdate: () => void | Promise<void>,
+  worldAddress: string = getDojoConfig().worldAddress,
+  namespace: string = getDojoConfig().namespace,
 ): Promise<Subscription> {
-  const { worldAddress } = getDojoConfig()
-  return toriiClient.onEntityUpdated(selectedGameClause(gameId), [worldAddress], onUpdate)
+  return toriiClient.onEntityUpdated(selectedGameClause(gameId, namespace), [worldAddress], onUpdate)
 }

@@ -1,7 +1,7 @@
 import { DojoProvider } from '@dojoengine/core'
 import { setupWorld } from '../../contracts/bindings/typescript/contracts.gen'
 import * as torii from '@dojoengine/torii-client'
-import { getDojoConfig } from './config'
+import { getDojoConfig, resolveDojoConfig, type BlocDuelConfig, type BlocDuelConfigOverride } from './config'
 
 export type BlocDuelWorld = ReturnType<typeof setupWorld>
 export type BlocDuelRuntime = {
@@ -63,8 +63,10 @@ async function assertToriiReachable(toriiUrl: string) {
   }
 }
 
-async function validateRuntime(dojoProvider: DojoProvider, toriiUrl: string) {
-  const config = getDojoConfig()
+async function validateRuntime(
+  dojoProvider: DojoProvider,
+  config: BlocDuelConfig,
+) {
   const actionsContract = config.manifest.contracts.find((contract) => contract.tag === 'bloc_duel-actions')
 
   try {
@@ -86,19 +88,19 @@ async function validateRuntime(dojoProvider: DojoProvider, toriiUrl: string) {
   }
 
   try {
-    await assertToriiReachable(toriiUrl)
+    await assertToriiReachable(config.toriiUrl)
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'Unable to reach Torii'
     throw new Error(
-      `Torii is not reachable at ${toriiUrl}. ${reason} Start the full stack before using create/join.`,
+      `Torii is not reachable at ${config.toriiUrl}. ${reason} Start the full stack before using create/join.`,
     )
   }
 }
 
-async function createBlocDuelRuntime() {
-  const config = getDojoConfig()
+export async function createBlocDuelRuntime(configOverride?: BlocDuelConfigOverride) {
+  const config = configOverride ? resolveDojoConfig(configOverride) : getDojoConfig()
   const dojoProvider = new DojoProvider(config.manifest, config.rpcUrl)
-  await validateRuntime(dojoProvider, config.toriiUrl)
+  await validateRuntime(dojoProvider, config)
   const world = setupWorld(dojoProvider)
   const toriiClient = await new torii.ToriiClient({
     toriiUrl: config.toriiUrl,

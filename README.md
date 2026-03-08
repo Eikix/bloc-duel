@@ -98,6 +98,100 @@ npm run dev
 
 This only starts the frontend — you'll need to run Katana/Torii/Sozo manually.
 
+## Headless Agent SDK
+
+The repo also ships a headless agent client for programmatic play. It talks directly to Dojo actions and Torii, so it can:
+- create and join matches
+- inspect match state and legal actions
+- submit moves turn by turn
+- self-play locally for validation
+- watch existing matches and continue them
+
+### Core API
+
+The public entrypoint is `src/agent/index.ts`.
+
+Main primitives:
+- `createAgentClient(options)`
+- `client.listMatches()`
+- `client.listJoinableMatches()`
+- `client.getMatch(matchId)`
+- `client.createMatch()`
+- `client.joinMatch(matchId)`
+- `client.getLegalActions(matchId)`
+- `client.submitAction(matchId, action)`
+- `client.playTurn(matchId, strategy)`
+- `client.playMatch(matchId, strategy, options)`
+- `client.selfPlay(options)`
+
+Strategies currently bundled:
+- `random`
+- `balanced`
+- `greedy-agi`
+- `greedy-escalation`
+- `systems-first`
+
+### Local CLI
+
+Local commands use the deployed world in `.data/world_address.txt` automatically.
+
+```bash
+npm run agent:matches
+npm run agent:open
+npm run agent:create
+npm run agent:join -- <matchId>
+npm run agent:show -- <matchId>
+npm run agent:legal -- <matchId>
+npm run agent:act -- <matchId> play <position>
+npm run agent:play -- <matchId> --strategy balanced
+npm run agent:watch -- <matchId>
+npm run agent:selfplay
+```
+
+Signer modes:
+- Local Katana defaults to burner accounts automatically
+- Public networks should use `--signer-mode controller-session`
+- Raw `private-key` mode is kept as a fallback, not the preferred path
+
+If you need raw access to the underlying CLI:
+
+```bash
+npm run agent:cli -- matches list --json
+```
+
+Example session-backed usage:
+
+```bash
+npm run agent:cli -- \
+  --network sepolia \
+  --rpc-url https://api.cartridge.gg/x/starknet/sepolia \
+  --torii-url <torii-url> \
+  --world-address <world-address> \
+  --signer-mode controller-session \
+  --session-base-path .cartridge \
+  match create --json
+```
+
+### Validation
+
+Run the systematic local SDK validation with:
+
+```bash
+npm run agent:validate
+```
+
+This covers:
+- match discovery
+- open-match discovery
+- create/join
+- show/legal/act
+- watch update propagation
+- match play
+- join through `match act ... join`
+- repeated self-play across multiple strategy pairings
+
+The full self-play loop is currently correct but still slow on local Katana/Torii. Expect repeated validation runs to take a few minutes until that throughput issue is improved.
+
 ## How It Works
 
 Two rival blocs — **Atlantic** and **Continental** — compete across three ages. Each age deals 10 cards into a pyramid. Players take turns drafting: **play** a card for its effect, or **sell** it for capital.
