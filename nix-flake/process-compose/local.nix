@@ -172,7 +172,6 @@
             PUBLIC_NODE_URL = "http://127.0.0.1:5050";
             PUBLIC_STARKNET_NETWORK = "katana";
             PUBLIC_TORII_URL = "http://127.0.0.1:${toString common.ports.toriiPort}";
-            BLOCDUEL_USE_MKCERT = "0";
           };
         };
       };

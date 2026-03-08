@@ -131,7 +131,6 @@
             PUBLIC_DOJO_MANIFEST_PROFILE = "mainnet";
             PUBLIC_NODE_URL = "https://api.cartridge.gg/x/starknet/mainnet";
             PUBLIC_STARKNET_NETWORK = "mainnet";
-            BLOCDUEL_USE_MKCERT = "0";
           };
         };
       };
