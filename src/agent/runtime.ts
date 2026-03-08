@@ -24,14 +24,16 @@ import type {
   AgentPolicy,
   AgentStrategy,
   BlocDuelAgent,
-  CreatedGameResult,
-  JoinedGameResult,
-  PlayGameOptions,
-  PlayGameResult,
+  CreatedMatchResult,
+  JoinedMatchResult,
+  PlayMatchOptions,
+  PlayMatchResult,
   PlayTurnResult,
+  SelfPlayOptions,
+  SelfPlayResult,
   SubmittedActionResult,
-  WaitForGameUpdateOptions,
-  WaitForGameUpdateResult,
+  WaitForMatchUpdateOptions,
+  WaitForMatchUpdateResult,
 } from './types'
 
 type ChooseSystemBonusAction = Extract<AgentAction, { kind: 'choose_system_bonus' }>
@@ -272,7 +274,7 @@ class BlocDuelAgentClient implements BlocDuelAgent {
     this.address = state.address
   }
 
-  async listGames() {
+  async listMatches() {
     return fetchGameSummaries(
       this.state.toriiClient,
       this.state.config.worldAddress,
@@ -280,26 +282,33 @@ class BlocDuelAgentClient implements BlocDuelAgent {
     )
   }
 
-  async getGame(gameId: number, actorAddress?: string) {
+  async listJoinableMatches(actorAddress?: string) {
+    const address = normalizeAddress(actorAddress ?? this.address ?? '0x0')
+    return (await this.listMatches()).filter(
+      (match) => normalizeAddress(match.playerTwo) === '0x0' && normalizeAddress(match.playerOne) !== address,
+    )
+  }
+
+  async getMatch(matchId: number, actorAddress?: string) {
     return fetchGameSnapshot(
       this.state.toriiClient,
-      gameId,
+      matchId,
       actorAddress ?? this.address ?? undefined,
       this.state.config.worldAddress,
       this.state.config.namespace,
     )
   }
 
-  async createGame(): Promise<CreatedGameResult> {
+  async createMatch(): Promise<CreatedMatchResult> {
     const { account, address } = requireSigner(this.state)
     const action: AgentAction = { kind: 'create_game' }
     assertPolicy(this.state, null, address, action)
 
     if (this.state.policy?.dryRun) {
-      return { action, dryRun: true, txHash: null, gameId: null, snapshot: null }
+      return { action, dryRun: true, txHash: null, matchId: null, snapshot: null }
     }
 
-    const knownGameIds = new Set((await this.listGames()).map((game) => game.gameId))
+    const knownMatchIds = new Set((await this.listMatches()).map((match) => match.gameId))
     if (this.state.policy?.cooldownMs) {
       await sleep(this.state.policy.cooldownMs)
     }
@@ -309,15 +318,15 @@ class BlocDuelAgentClient implements BlocDuelAgent {
 
     const attempts = this.state.policy?.waitForIndexingAttempts ?? 40
     const intervalMs = this.state.policy?.waitForIndexingIntervalMs ?? 500
-    let gameId: number | null = null
+    let matchId: number | null = null
 
-    for (let attempt = 0; attempt < attempts && gameId === null; attempt += 1) {
-      const games = await this.listGames()
-      gameId = games.find(
-        (game) => !knownGameIds.has(game.gameId) && normalizeAddress(game.playerOne) === address,
+    for (let attempt = 0; attempt < attempts && matchId === null; attempt += 1) {
+      const matches = await this.listMatches()
+      matchId = matches.find(
+        (match) => !knownMatchIds.has(match.gameId) && normalizeAddress(match.playerOne) === address,
       )?.gameId ?? null
 
-      if (gameId === null) {
+      if (matchId === null) {
         await sleep(intervalMs)
       }
     }
@@ -326,14 +335,14 @@ class BlocDuelAgentClient implements BlocDuelAgent {
       action,
       dryRun: false,
       txHash: result.transaction_hash,
-      gameId,
-      snapshot: gameId === null ? null : await this.getGame(gameId),
+      matchId,
+      snapshot: matchId === null ? null : await this.getMatch(matchId),
     }
   }
 
-  async joinGame(gameId: number): Promise<JoinedGameResult> {
-    const action: AgentAction = { kind: 'join_game', gameId }
-    const result = await this.submitAction(gameId, action)
+  async joinMatch(matchId: number): Promise<JoinedMatchResult> {
+    const action: AgentAction = { kind: 'join_game', gameId: matchId }
+    const result = await this.submitAction(matchId, action)
     return {
       action,
       dryRun: result.dryRun,
@@ -342,23 +351,23 @@ class BlocDuelAgentClient implements BlocDuelAgent {
     }
   }
 
-  async getLegalActions(gameId: number, actorAddress?: string) {
-    const snapshot = await this.getGame(gameId, actorAddress)
+  async getLegalActions(matchId: number, actorAddress?: string) {
+    const snapshot = await this.getMatch(matchId, actorAddress)
     if (!snapshot) return []
     return buildLegalActions(snapshot, actorAddress ?? this.address ?? '0x0')
   }
 
-  async waitForGameUpdate(
-    gameId: number,
+  async waitForMatchUpdate(
+    matchId: number,
     previousVersionHint?: string | null,
-    options: WaitForGameUpdateOptions = {},
-  ): Promise<WaitForGameUpdateResult> {
+    options: WaitForMatchUpdateOptions = {},
+  ): Promise<WaitForMatchUpdateResult> {
     const attempts = options.attempts ?? this.state.policy?.waitForIndexingAttempts ?? 40
     const intervalMs = options.intervalMs ?? this.state.policy?.waitForIndexingIntervalMs ?? 500
 
     let latestSnapshot: GameSnapshot | null = null
     for (let attempt = 0; attempt < attempts; attempt += 1) {
-      latestSnapshot = await this.getGame(gameId)
+      latestSnapshot = await this.getMatch(matchId)
       const version = versionSnapshot(latestSnapshot)
       if (version !== previousVersionHint) {
         return { snapshot: latestSnapshot, version }
@@ -372,15 +381,15 @@ class BlocDuelAgentClient implements BlocDuelAgent {
     }
   }
 
-  async submitAction(gameId: number, action: AgentAction): Promise<SubmittedActionResult> {
+  async submitAction(matchId: number, action: AgentAction): Promise<SubmittedActionResult> {
     if (action.kind === 'create_game') {
-      throw new Error('Use createGame() for create_game')
+      throw new Error('Use createMatch() for create_game')
     }
 
     const { address } = requireSigner(this.state)
-    const snapshot = await this.getGame(gameId, address)
+    const snapshot = await this.getMatch(matchId, address)
     if (!snapshot) {
-      throw new Error(`Game #${gameId} not found`)
+      throw new Error(`Match #${matchId} not found`)
     }
 
     const legalActions = buildLegalActions(snapshot, address)
@@ -407,7 +416,7 @@ class BlocDuelAgentClient implements BlocDuelAgent {
 
     const result = await submitWorldAction(this.state, action)
     await waitForTransaction(this.state.rpcProvider, result.transaction_hash)
-    const updated = await this.waitForGameUpdate(gameId, previousVersion)
+    const updated = await this.waitForMatchUpdate(matchId, previousVersion)
 
     return {
       action,
@@ -418,15 +427,15 @@ class BlocDuelAgentClient implements BlocDuelAgent {
     }
   }
 
-  async playTurn(gameId: number, strategy: string | AgentStrategy): Promise<PlayTurnResult> {
+  async playTurn(matchId: number, strategy: string | AgentStrategy): Promise<PlayTurnResult> {
     const actorAddress = this.address
     if (!actorAddress) {
       throw new Error('A signer is required for autoplay')
     }
 
-    const snapshot = await this.getGame(gameId, actorAddress)
+    const snapshot = await this.getMatch(matchId, actorAddress)
     if (!snapshot) {
-      throw new Error(`Game #${gameId} not found`)
+      throw new Error(`Match #${matchId} not found`)
     }
 
     const legalActions = buildLegalActions(snapshot, actorAddress)
@@ -442,13 +451,13 @@ class BlocDuelAgentClient implements BlocDuelAgent {
     const choose = resolveStrategy(strategy)
     const action = choose({
       actorAddress,
-      gameId,
+      matchId,
       snapshot,
       legalActions,
       random: Math.random,
     })
 
-    const result = await this.submitAction(gameId, action)
+    const result = await this.submitAction(matchId, action)
     return {
       action,
       snapshot: result.snapshot,
@@ -457,11 +466,11 @@ class BlocDuelAgentClient implements BlocDuelAgent {
     }
   }
 
-  async playGame(
-    gameId: number,
+  async playMatch(
+    matchId: number,
     strategy: string | AgentStrategy,
-    options: PlayGameOptions = {},
-  ): Promise<PlayGameResult> {
+    options: PlayMatchOptions = {},
+  ): Promise<PlayMatchResult> {
     const pollIntervalMs = options.pollIntervalMs ?? 1000
     const maxActions = options.maxActions ?? 200
     const maxIdlePolls = options.maxIdlePolls ?? 600
@@ -469,7 +478,7 @@ class BlocDuelAgentClient implements BlocDuelAgent {
 
     let idlePolls = 0
     while (actions.length < maxActions && idlePolls < maxIdlePolls) {
-      const turn = await this.playTurn(gameId, strategy)
+      const turn = await this.playTurn(matchId, strategy)
       if (turn.snapshot?.phase === 'GAME_OVER') {
         return { actions, finalSnapshot: turn.snapshot }
       }
@@ -492,7 +501,53 @@ class BlocDuelAgentClient implements BlocDuelAgent {
 
     return {
       actions,
-      finalSnapshot: await this.getGame(gameId),
+      finalSnapshot: await this.getMatch(matchId),
+    }
+  }
+
+  async selfPlay(options: SelfPlayOptions = {}): Promise<SelfPlayResult> {
+    const strategyA = options.strategyA ?? 'balanced'
+    const strategyB = options.strategyB ?? 'balanced'
+    const burnerA = options.burnerA ?? 0
+    const burnerB = options.burnerB ?? 1
+
+    const clientA = await createAgentClient({
+      ...this.state.config,
+      signer: { mode: 'katana-burner', burnerIndex: burnerA },
+      policy: this.state.policy,
+    })
+    const clientB = await createAgentClient({
+      ...this.state.config,
+      signer: { mode: 'katana-burner', burnerIndex: burnerB },
+      policy: this.state.policy,
+    })
+
+    try {
+      const created = await clientA.createMatch()
+      if (!created.matchId) {
+        return { matchId: null, turns: 0, finalSnapshot: null }
+      }
+
+      await clientB.joinMatch(created.matchId)
+      let snapshot = await clientA.getMatch(created.matchId)
+      let turns = 0
+
+      while (snapshot && snapshot.phase !== 'GAME_OVER' && turns < (options.maxActions ?? 200)) {
+        const active = snapshot.currentPlayer === 0 ? clientA : clientB
+        const strategy = snapshot.currentPlayer === 0 ? strategyA : strategyB
+        await active.playTurn(snapshot.gameId, strategy)
+        snapshot = await active.getMatch(snapshot.gameId)
+        turns += 1
+      }
+
+      return {
+        matchId: created.matchId,
+        turns,
+        finalSnapshot: snapshot,
+      }
+    } finally {
+      clientA.close()
+      clientB.close()
     }
   }
 
@@ -508,9 +563,9 @@ export function getSnapshotVersion(snapshot: GameSnapshot | null) {
 export function formatAgentAction(action: AgentAction): string {
   switch (action.kind) {
     case 'create_game':
-      return 'create_game'
+      return 'create_match'
     case 'join_game':
-      return `join_game #${action.gameId}`
+      return `join_match #${action.gameId}`
     case 'play_card':
       return `play_card pos ${action.position}`
     case 'discard_card':

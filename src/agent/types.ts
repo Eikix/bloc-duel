@@ -35,83 +35,100 @@ export interface AgentClientOptions extends BlocDuelConfigOverride {
 
 export interface StrategyContext {
   actorAddress: string
-  gameId: number
-  snapshot: GameSnapshot
+  matchId: number
+  snapshot: MatchSnapshot
   legalActions: AgentAction[]
   random: () => number
 }
 
 export type AgentStrategy = (context: StrategyContext) => AgentAction
+export type MatchSummary = GameSummary
+export type MatchSnapshot = GameSnapshot
 
 export interface SubmittedActionResult {
   action: AgentAction
   dryRun: boolean
   txHash: string | null
-  snapshot: GameSnapshot | null
+  snapshot: MatchSnapshot | null
   version: string | null
 }
 
-export interface CreatedGameResult {
+export interface CreatedMatchResult {
   action: Extract<AgentAction, { kind: 'create_game' }>
   dryRun: boolean
   txHash: string | null
-  gameId: number | null
-  snapshot: GameSnapshot | null
+  matchId: number | null
+  snapshot: MatchSnapshot | null
 }
 
-export interface JoinedGameResult {
+export interface JoinedMatchResult {
   action: Extract<AgentAction, { kind: 'join_game' }>
   dryRun: boolean
   txHash: string | null
-  snapshot: GameSnapshot | null
+  snapshot: MatchSnapshot | null
 }
 
 export interface PlayTurnResult {
   action: AgentAction | null
-  snapshot: GameSnapshot | null
+  snapshot: MatchSnapshot | null
   txHash: string | null
   dryRun: boolean
 }
 
-export interface PlayGameOptions {
+export interface PlayMatchOptions {
   pollIntervalMs?: number
   maxActions?: number
   maxIdlePolls?: number
 }
 
-export interface PlayGameResult {
+export interface PlayMatchResult {
   actions: SubmittedActionResult[]
-  finalSnapshot: GameSnapshot | null
+  finalSnapshot: MatchSnapshot | null
 }
 
-export interface WaitForGameUpdateOptions {
+export interface SelfPlayOptions extends PlayMatchOptions {
+  strategyA?: string | AgentStrategy
+  strategyB?: string | AgentStrategy
+  burnerA?: number
+  burnerB?: number
+}
+
+export interface SelfPlayResult {
+  matchId: number | null
+  turns: number
+  finalSnapshot: MatchSnapshot | null
+}
+
+export interface WaitForMatchUpdateOptions {
   attempts?: number
   intervalMs?: number
 }
 
-export interface WaitForGameUpdateResult {
-  snapshot: GameSnapshot | null
+export interface WaitForMatchUpdateResult {
+  snapshot: MatchSnapshot | null
   version: string | null
 }
 
 export interface BlocDuelAgent {
   readonly address: string | null
-  listGames(): Promise<GameSummary[]>
-  getGame(gameId: number, actorAddress?: string): Promise<GameSnapshot | null>
-  createGame(): Promise<CreatedGameResult>
-  joinGame(gameId: number): Promise<JoinedGameResult>
-  getLegalActions(gameId: number, actorAddress?: string): Promise<AgentAction[]>
-  submitAction(gameId: number, action: AgentAction): Promise<SubmittedActionResult>
-  waitForGameUpdate(
-    gameId: number,
+  listMatches(): Promise<MatchSummary[]>
+  listJoinableMatches(actorAddress?: string): Promise<MatchSummary[]>
+  getMatch(matchId: number, actorAddress?: string): Promise<MatchSnapshot | null>
+  createMatch(): Promise<CreatedMatchResult>
+  joinMatch(matchId: number): Promise<JoinedMatchResult>
+  getLegalActions(matchId: number, actorAddress?: string): Promise<AgentAction[]>
+  submitAction(matchId: number, action: AgentAction): Promise<SubmittedActionResult>
+  waitForMatchUpdate(
+    matchId: number,
     previousVersionHint?: string | null,
-    options?: WaitForGameUpdateOptions,
-  ): Promise<WaitForGameUpdateResult>
-  playTurn(gameId: number, strategy: string | AgentStrategy): Promise<PlayTurnResult>
-  playGame(
-    gameId: number,
+    options?: WaitForMatchUpdateOptions,
+  ): Promise<WaitForMatchUpdateResult>
+  playTurn(matchId: number, strategy: string | AgentStrategy): Promise<PlayTurnResult>
+  playMatch(
+    matchId: number,
     strategy: string | AgentStrategy,
-    options?: PlayGameOptions,
-  ): Promise<PlayGameResult>
+    options?: PlayMatchOptions,
+  ): Promise<PlayMatchResult>
+  selfPlay(options?: SelfPlayOptions): Promise<SelfPlayResult>
   close(): void
 }
