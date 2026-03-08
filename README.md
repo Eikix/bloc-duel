@@ -1,6 +1,13 @@
 # BLOC:DUEL
 
+Last synced: 2026-03-08
+
 A two-player strategy card game set in a near-future geopolitical conflict. Draft cards from a shared pyramid, build your engine, and race to one of three victory conditions.
+
+Current public deployment:
+- Frontend: [https://bloc-duel.vercel.app](https://bloc-duel.vercel.app)
+- Network: Starknet Sepolia
+- Wallet flow: Cartridge Controller
 
 ## Development
 
@@ -24,7 +31,7 @@ What it does:
 - Starts Vite dev server (port 5173)
 - Uses local Katana burner accounts instead of Cartridge Controller
 
-**When to use:** Day-to-day local development. No mainnet costs, fast iteration.
+**When to use:** Day-to-day local development. No public-network costs, fast iteration.
 
 ### Mode 2: Mainnet + Local Torii
 
@@ -127,6 +134,15 @@ Main primitives:
 Strategies currently bundled:
 - `random`
 - `balanced`
+- `race-agi`
+- `race-escalation`
+- `race-systems`
+- `deny-agi`
+- `deny-escalation`
+- `deny-systems`
+- `adaptive-race`
+
+Legacy aliases still supported by the CLI/runtime:
 - `greedy-agi`
 - `greedy-escalation`
 - `systems-first`
@@ -190,7 +206,7 @@ This covers:
 - join through `match act ... join`
 - repeated self-play across multiple strategy pairings
 
-The full self-play loop is currently correct but still slow on local Katana/Torii. Expect repeated validation runs to take a few minutes until that throughput issue is improved.
+The local validator is stable on Katana/Torii. Larger balance batches still depend on local chain/indexer throughput, so big self-play runs can take a few minutes.
 
 ## Balance Lab
 
@@ -255,16 +271,16 @@ Two rival blocs — **Atlantic** and **Continental** — compete across three ag
 
 | Victory | How |
 |---|---|
-| **AGI Breakthrough** | Push your AGI track to 6 |
-| **Escalation Dominance** | Push the shared escalation track to your side's limit (±6) |
-| **Systems Dominance** | Collect all 4 system types (COMPUTE, FINANCE, CYBER, DIPLOMACY) |
-| **Points** | If no one wins by Age 3, highest score (AGI + systems + heroes) wins |
+| **AGI Breakthrough** | Push your AGI track to 7 |
+| **Escalation Dominance** | Push the shared escalation track to your side's limit (`-6` for Atlantic, `+6` for Continental) |
+| **Systems Dominance** | Collect all 4 system types during Age III |
+| **Points** | If no one wins by Age 3, highest score (AGI + distinct systems x2 + heroes) wins |
 
 ### Card Types
 
 - **AI** (blue) — Advance the AGI track
 - **MILITARY** (red) — Push the escalation track
-- **ECONOMY** (amber) — Generate resources per turn
+- **ECONOMY** (amber) — Generate resources or capital
 - **SYSTEM** (green) — Collect system symbols for bonuses and the instant win
 
 ### Systems & Bonuses
@@ -290,12 +306,12 @@ Cards can chain across ages. If you played the prerequisite card, the next link 
 
 ### Heroes
 
-Powerful one-time recruits available each age. Each hero costs resources plus a surcharge (+2 per hero you already own). Heroes provide large effects but replace your card draft for the turn.
+Powerful one-time recruits available each age. Each hero costs resources plus a surcharge (+3 per hero you already own). Heroes provide large effects but replace your card draft for the turn.
 
 ## Stack
 
-React 19, TypeScript, Tailwind CSS v4, Zustand, Framer Motion — zero backend, runs entirely in the browser.
+React 19, TypeScript, Tailwind CSS v4, Zustand, Framer Motion, Dojo, Torii, and Cartridge Controller.
 
 ## Status
 
-Work in progress. Active development on game balance and system bonus mechanics.
+Live on Starknet Sepolia. Active development is now focused on balance, UX clarity, and release hardening.
