@@ -40,3 +40,7 @@ result/
 .agents
 .claude
 skills/
+!.agents/
+!.agents/skills/
+!.agents/skills/bloc-duel-agent/
+!.agents/skills/bloc-duel-agent/SKILL.md
